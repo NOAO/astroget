@@ -1,0 +1,23 @@
+[project]
+name = "astroget"
+version = "0.0.1"
+authors = [
+  { name="S. Pothier", email="astroarchive@noirlab.edu" },
+]
+description = "Find and get FITS metadata and images."
+readme = "README.md"
+requires-python = ">=3.7"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/pypa/astroget"
+"Bug Tracker" = "https://github.com/pypa/astroget/issues"
+"Documentation" ="https://astroget.readthedocs.io/en/latest/"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
