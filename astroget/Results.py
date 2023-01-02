@@ -3,7 +3,7 @@ These include results of client.find().
 """
 
 from collections import UserList
-from nat.utils import _AttrDict
+from astroget.utils import _AttrDict
 
 
 class Results(UserList):

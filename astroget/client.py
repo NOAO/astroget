@@ -1,4 +1,4 @@
-"""Client module for NATICA.
+"""Client module for the Astro Data Archive.
 This module interfaces to the Astro Archive Server to get meta-data.
 """
 ############################################
@@ -10,14 +10,12 @@ from urllib.parse import urlencode, urlparse
 import requests
 ############################################
 # Local Packages
-from nat.Results import Found
-from nat import __version__
+from astroget.Results import Found
+import astroget.exceptions as ex
+from astroget import __version__
 
 MAX_CONNECT_TIMEOUT = 3.1    # seconds
 MAX_READ_TIMEOUT = 90 * 60   # seconds
-
-_pat_hosts = ['marsnat1-pat.csdc.noirlab.edu',
-              ]
 
 # Upload to PyPi:
 #   python3 -m build --wheel
@@ -31,17 +29,15 @@ _pat_hosts = ['marsnat1-pat.csdc.noirlab.edu',
 # C-c M-d in function/method def
 
 # ### Generate documentation:
-# cd ~/sandbox/sparclclient
-# sphinx-apidoc -f -o source sparcl
+# cd ~/sandbox/astroget
+# sphinx-apidoc -f -o source astroget
 # make html
 # firefox -new-tab "`pwd`/build/html/index.html"
 
 # Using HTTPie (http://httpie.org):
-# http :8010/nat/version
+# http :8010/astroget/version
 
 _PROD  = 'https://astroarchive.noirlab.edu'         # noqa: E221
-_STAGE = 'https://marsnat1-stage.csdc.noirlab.edu'  # noqa: E221
-_PAT   = 'https://marsnat1-pat.csdc.noirlab.edu'    # noqa: E221
 _DEV   = 'http://localhost:8010'                    # noqa: E221
 
 client_version = __version__
@@ -49,7 +45,8 @@ client_version = __version__
 ###########################
 # ## The Client class
 
-class NatClient():
+# Community Science and Data Center (CSDC)
+class CsdcClient():
     """Provides interface to Astro Archive Server.
     When using this to report a bug, set verbose to True. Also print
     your instance of this.  The results will include important info
@@ -71,7 +68,9 @@ class NatClient():
             wait for first byte. Defaults to 5400.
 
     Example:
-        >>> client = nat.client.NatClient()
+        >>> client = CsdcClient()
+        >>> client
+        (astroget:0.1.0, api:6.0, https://astroarchive.noirlab.edu/api, verbose=False, connect_timeout=1.1, read_timeout=5400)
 
     Raises:
         Exception: Object creation compares the version from the
@@ -113,19 +112,17 @@ class NatClient():
             verstr = requests.get(endpoint, timeout=self.timeout).content
         except requests.ConnectionError as err:
             msg = f'Could not connect to {endpoint}. {str(err)}'
-            if urlparse(url).hostname in _pat_hosts:
-                msg += 'Did you enable VPN?'
             raise ex.ServerConnectionError(msg) from None  # disable chaining
 
         self.apiversion = float(verstr)
 
-        expected_api = NatClient.KNOWN_GOOD_API_VERSION
+        expected_api = CsdcClient.KNOWN_GOOD_API_VERSION
         if (int(self.apiversion) - int(expected_api)) >= 1:
             msg = (f'The Astro Archive Client you are running expects an older '
                    f'version of the API services. '
-                   f'Please upgrade to the latest "natclient".  '
+                   f'Please upgrade to the latest "astroget".  '
                    f'The Client you are using expected version '
-                   f'{NatClient.KNOWN_GOOD_API_VERSION} but got '
+                   f'{CsdcClient.KNOWN_GOOD_API_VERSION} but got '
                    f'{self.apiversion} from the Astro Archive Server '
                    f'at {self.apiurl}.')
             raise Exception(msg)
@@ -139,7 +136,7 @@ class NatClient():
         # END __init__()
 
     def __repr__(self):
-        return(f'(natclient:{self.clientversion},'
+        return(f'(astroget:{self.clientversion},'
                f' api:{self.apiversion},'
                f' {self.apiurl},'
                f' verbose={self.verbose},'
@@ -152,7 +149,7 @@ class NatClient():
         print('_validate_fields: NOT IMPLEMENTED')
 
     @property
-    def version(self):
+    def expected_server_version(self):
         """Return version of Server Rest API used by this client.
         If the Rest API changes such that the Major version increases,
         a new version of this module will likely need to be used.
@@ -161,9 +158,9 @@ class NatClient():
             API version (:obj:`float`).
 
         Example:
-            >>> client = nat.client.NatClient()
-            >>> client.version()
-
+            >>> client = CsdcClient()
+            >>> client.expected_server_version
+            6.0
         """
 
         if self.apiversion is None:
@@ -200,16 +197,14 @@ class NatClient():
                 to sort by. Defaults to None. (no sorting)
 
         Returns:
-            :class:`~nat.Results.Found`: Contains header and records.
+            :class:`~astroget.Results.Found`: Contains header and records.
 
         Example:
-            >>> client = nat.client.NatClient()
-            >>> outs = ['id', 'ra', 'dec']
-            >>> cons = {'spectype': ['GALAXY'], 'redshift': [0.5, 0.9]}
-            >>> found = client.find(outfields=outs, constraints=cons)
-            >>> found.records
+            >>> client = CsdcClient()
+            >>> found = client.find()
+            >>> found
+            Find Results: 500 records
         """
-
         # Let "outfields" default to ['id']; but fld may have been renamed
         if outfields is None:
             outfields = ['md5sum'] # id
@@ -227,7 +222,7 @@ class NatClient():
         if res.status_code != 200:
             if self.verbose and ('traceback' in res.json()):
                 print(f'DBG: Server traceback=\n{res.json()["traceback"]}')
-            raise ex.genNatException(res, verbose=self.verbose)
+            raise ex.genAstrogetException(res, verbose=self.verbose)
 
         return Found(res.json(), client=self)
 
