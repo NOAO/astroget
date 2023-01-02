@@ -209,8 +209,8 @@ class CsdcClient():
         >>> found.records[:2]
         [{'md5sum': '0000004ab27d9e427bb93c640b358633'}, {'md5sum': '0000032cfbe72cc162eaec4c0a9ce6ec'}]
 
-        # Get image ids of DECam Objects
-        >>> found = client.find(outfields=['md5sum', 'instrument', 'proc_type', 'obs_type'], constraints={'instrument': ['decam'], 'obs_type': ['object'], 'proc_type': ['instcal']}, sort="md5sum"  )
+        # Get image ids of DECam Objects for possible cutouts
+        >>> found = client.find(outfields=['md5sum', 'instrument', 'proc_type', 'obs_type','url', 'filesize'], constraints={'instrument': ['decam'], 'obs_type': ['object'], 'proc_type': ['instcal']}, sort="md5sum"  )
         _validate_fields: NOT IMPLEMENTED
         >>> found.records[:2]
         [{'obs_type': 'object', 'proc_type': 'instcal', 'md5sum': '000007c08dc11d70622574eec3819a02', 'instrument': 'decam'}, {'obs_type': 'object', 'proc_type': 'instcal', 'md5sum': '0000081373392f93bcacc31ba0153467', 'instrument': 'decam'}]
