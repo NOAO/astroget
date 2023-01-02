@@ -199,11 +199,33 @@ class CsdcClient():
         Returns:
             :class:`~astroget.Results.Found`: Contains header and records.
 
-        Example:
-            >>> client = CsdcClient()
-            >>> found = client.find()
-            >>> found
-            Find Results: 500 records
+        Examples:
+
+        # Default find; no constraints, get md5sum field (image id)
+        >>> client = CsdcClient()
+        >>> found = client.find()
+        >>> found
+        Find Results: 500 records
+        >>> found.records[:2]
+        [{'md5sum': '0000004ab27d9e427bb93c640b358633'},
+         {'md5sum': '0000032cfbe72cc162eaec4c0a9ce6ec'}]
+
+        # Get image ids of DECam Objects
+        >>> found = client.find(outfields=['md5sum', 'instrument', 'proc_type', 'obs_type'],
+                                constraints={'instrument': ['decam'],
+                                             'obs_type': ['object'],
+                                             'proc_type': ['instcal']}  )
+        >>> found.records[:2]
+        [{'obs_type': 'object',
+          'proc_type': 'instcal',
+          'md5sum': '385283c94e3f48011e282a03f84e5898',
+          'instrument': 'decam'},
+         {'obs_type': 'object',
+          'proc_type': 'instcal',
+          'md5sum': 'f8310936bdc8be9f47996e94b9f4a71a',
+          'instrument': 'decam'}]
+
+
         """
         # Let "outfields" default to ['id']; but fld may have been renamed
         if outfields is None:
