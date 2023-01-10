@@ -42,6 +42,14 @@ _DEV   = 'http://localhost:8010'                    # noqa: E221
 
 client_version = __version__
 
+def get_obj_ra_dec(object_name):
+    from astropy.coordinates import SkyCoord
+    obj_coord = SkyCoord.from_name(object_name)
+    return {'name': object_name,
+            'ra':obj_coord.ra.degree,
+            'dec':obj_coord.dec.degree}
+
+
 ###########################
 # ## The Client class
 
@@ -170,9 +178,14 @@ class CsdcClient():
             self.apiversion = float(response.content)
         return self.apiversion
 
+    # RETURN: FITS image
+    def cutout(self, imageid, ra, dec, pwidth, pheight):
+        pass
+
     def find(self, outfields=None, *,
              constraints={},  # dict(fname) = [op, param, ...]
              limit=500,
+             verbose=None,
              sort=None):
         """Find records in the Astro Archive database.
 
@@ -209,23 +222,30 @@ class CsdcClient():
         >>> found.records[:2]
         [{'md5sum': '0000004ab27d9e427bb93c640b358633'}, {'md5sum': '0000032cfbe72cc162eaec4c0a9ce6ec'}]
 
-        # Get image ids of DECam Objects for possible cutouts
-        >>> found = client.find(outfields=['md5sum', 'instrument', 'proc_type', 'obs_type','url', 'filesize'], constraints={'instrument': ['decam'], 'obs_type': ['object'], 'proc_type': ['instcal']}, sort="md5sum"  )
+        # Get image ids of DECam Objects for possible cutouts from big files (> 1gb)
+        >>> found = client.find(outfields=['instrument', 'proc_type', 'obs_type','url', 'filesize'], constraints={'instrument': ['decam'], 'obs_type': ['object'], 'proc_type': ['instcal'], 'filesize': [1e9,1e10]}, sort="md5sum")
         _validate_fields: NOT IMPLEMENTED
         >>> found.records[:2]
-        [{'obs_type': 'object', 'proc_type': 'instcal', 'md5sum': '000007c08dc11d70622574eec3819a02', 'instrument': 'decam'}, {'obs_type': 'object', 'proc_type': 'instcal', 'md5sum': '0000081373392f93bcacc31ba0153467', 'instrument': 'decam'}]
+        [{'obs_type': 'object', 'instrument': 'decam', 'filesize': 1776594240, 'proc_type': 'instcal', 'md5sum': '1431f0096dd79c70ea1d5ac78282d508', 'url': 'https://astroarchive.noirlab.edu/api/retrieve/1431f0096dd79c70ea1d5ac78282d508/'}, {'obs_type': 'object', 'instrument': 'decam', 'filesize': 2044751040, 'proc_type': 'instcal', 'md5sum': '52e3680b53768f12820ea1f873bd92db', 'url': 'https://astroarchive.noirlab.edu/api/retrieve/52e3680b53768f12820ea1f873bd92db/'}]
 
         """
+        verbose = self.verbose if verbose is None else verbose
         # Let "outfields" default to ['id']; but fld may have been renamed
         if outfields is None:
             outfields = ['md5sum'] # id
         if len(constraints) > 0:
             self._validate_fields(constraints.keys())
-        uparams = dict(limit=limit,)
+        used = set(outfields + list(constraints.keys()))
+        rectype='hdu' if any([s.startswith('hdu:') for s in used]) else 'file'
+
+        uparams = dict(limit=limit, rectype=rectype)
         if sort is not None:
             uparams['sort'] = sort
         qstr = urlencode(uparams)
         url = f'{self.apiurl}/adv_search/find/?{qstr}'
+        if verbose:
+            print(f'url={url}')
+
         search = [[k] + v for k, v in constraints.items()]
         sspec = dict(outfields=outfields, search=search)
         res = requests.post(url, json=sspec, timeout=self.timeout)
@@ -236,6 +256,143 @@ class CsdcClient():
             raise ex.genAstrogetException(res, verbose=self.verbose)
 
         return Found(res.json(), client=self)
+        # END find()
+
+    # /api/sia/vohdu?POS=194.1820667,21.6826583&SIZE=0.4
+    #    &instrument=decam&obs_type=object&proc_type=instcal
+    #    &FORMAT=ALL&VERB=3&limit=9
+    def vohdu(self, pos, size,
+              instrument=None,
+              obs_type=None,
+              proc_type=None,
+              FORMAT='ALL',
+              VERB=0,
+              verbose=None,
+              limit=None):
+        """NEED DOCSTRING for 'client.py:vohdu()' !!!"""
+        verbose = self.verbose if verbose is None else verbose
+        uparams = dict(limit=limit,
+                       format='json',
+                       POS=','.join([str(c) for c in pos]),
+                       SIZE=size)
+        if instrument is not None:
+            uparams['instrument'] = instrument
+        if obs_type is not None:
+            uparams['obs_type'] = obs_type
+        if proc_type is not None:
+            uparams['proc_type'] = proc_type
+        if VERB is not None:
+            uparams['VERB'] = VERB
+        if FORMAT is not None:
+            uparams['FORMAT'] = FORMAT
+        qstr = urlencode(uparams)
+        url = f'{self.apiurl}/sia/vohdu?{qstr}'
+        if verbose:
+            print(f'url={url}')
+        res = requests.get(url, timeout=self.timeout)
+
+        if res.status_code != 200:
+            if self.verbose:
+                print(f'DBG: Web-service error={res.content}')
+            raise Exception(f'res={res} verbose={self.verbose}')
+
+        return Found(res.json(), client=self)
+        #!return res.json()
+
+        # END vohdu()
+
+# This uses a hack to find HDUs that contain the given RA,DEC location.
+# The "radius" (2 dims) is 1/2 the estimated width/height of each HDU.
+# Since HDU sizes vary, this is silly (aka, wrong).
+#
+# Hack necessary because constraint on HDU ra,dec (each is a range)
+# currently broken in ADS.
+#
+# Best solution: Allow search_filters.val_in_range() to
+# use full list of django/postgres range operators.
+# see:
+# https://docs.djangoproject.com/en/4.0/ref/contrib/postgres/fields/#querying-range-fields
+# In particular: Hdu.objects.filter(ra__contains=NumericRange(t_ra_min, t_ra_max)
+#   t_ra_min:: Target RA Minimum. Left side of target region
+# A "target" is the (ramin:ramax,decmin:decmax) area of the sky that
+# reside completely in a HDU that will be source of cutout.
+# NOTE: A cutout will never cross HDU boundaries (so some useful data may
+#       me rejected.)
+def get_M64():
+    tra,tdec = (194.1820667, 21.6826583) # Target Center for RA, DEC search
+    rra,rdec = (0.45, 0.16) # Radius for RA, DEC search
+
+    out = ['archive_filename',
+           'md5sum',  # cannot use "url" in HDU search (which this is)
+           'hdu:hdu_idx',
+           'hdu:ra_center', 'hdu:ra_min',  'hdu:ra_max',
+           'hdu:dec_center','hdu:dec_min', 'hdu:dec_max']
+
+    # ads.find() bug does not allow ra_min, etc.
+    # They are synth fields from ra (range) etc.
+    #! cons = {'md5sum': ['b1dbbe234ae87da3b031ff621699643b'],
+    #!         'hdu:ra_min':  [-400, tra], # [inf:tra]
+    #!         'hdu:ra_max':  [tra, +400], # [tra:inf]
+    #!         'hdu:dec_min':  [-400, tdec], # [inf:tdec]
+    #!         'hdu:dec_max':  [tdec, +400], # [tdec:inf]
+    #!         }
+
+    cons = {'md5sum': ['b1dbbe234ae87da3b031ff621699643b'],
+            'hdu:ra_center':  [tra-rra, tra+rra],
+            'hdu:dec_center': [tdec-rdec, tdec+rdec]}
+
+    client = CsdcClient(verbose=True)
+    found = client.find(out, constraints=cons)
+    return found
+
+
+def get_cutout_metadata(pos=(194.1820667, 21.6826583), size=0.3):
+    tra,tdec = pos # Target Center for RA, DEC search
+    rra,rdec = (size, size) # Radius for RA, DEC search
+    #rra,rdec = (0.1, 0.1) # Radius for RA, DEC search # makes it SLOW
+
+    outfields=['md5sum', 'archive_filename',
+               # 'url', # cannot use "url" in HDU search (which this is)
+               'filesize',
+               'instrument', 'proc_type', 'obs_type',
+               'hdu:hdu_idx',
+               'hdu:ra_center', 'hdu:ra_min',  'hdu:ra_max',
+               'hdu:dec_center','hdu:dec_min', 'hdu:dec_max']
+    # This forces join, takes a long time. Killed after 10 minutes. Why so long?
+    cons = {'hdu:ra_center':  [tra-rra, tra+rra],
+            'hdu:dec_center': [tdec-rdec, tdec+rdec],
+            'instrument': ['decam'],
+            'obs_type': ['object'],
+            'proc_type': ['instcal'],
+            }
+
+    # wall-time = 3min 30s  (%time)
+    # 04:05:45 PM MST 2023; ...4:10...4:16...4:37...4:49...5:08  CANCELLED
+    #!cons = {'hdu:ra_center':  [tra-rra, tra+rra],
+    #!        'hdu:dec_center': [tdec-rdec, tdec+rdec],
+    #!        }
+
+    #!client = CsdcClient(verbose=True)
+    #!found = client.find(outfields, constraints=cons)
+
+    #! recs = [(r['md5sum'],
+    #!          r['hdu:hdu_idx'],
+    #!          # r['archive_filename'],
+    #!          )
+    #!         for r in found.records
+    #!         if (r['instrument']=='decam'
+    #!             and r['obs_type']=='object'
+    #!             and r['proc_type']=='instcal')]
+    # recs; 49 unique md5sum, 228 records; avg 4.6 hdu/file!!
+
+    client = CsdcClient(verbose=True)
+    found = client.vohdu(pos, size,
+                         instrument='decam',
+                         obs_type='object',
+                         proc_type='instcal',
+                         limit=None, VERB=3)
+    return found
+
 
 if __name__ == "__main__":
     import doctest
