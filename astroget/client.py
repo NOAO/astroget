@@ -58,6 +58,7 @@ def get_obj_ra_dec(object_name):
             'dec':obj_coord.dec.degree}
 
 # Display FITS in ubuntu with: fv, ds9
+# TODO: allow filename to be URI
 def cutout(fitsfilename, hdu_idx, pos, size, outfile="cutout.fits"):
     #size = 248 # pixels in a side
     (ra, dec) = pos # of center
@@ -298,6 +299,7 @@ class CsdcClient():
     # /api/sia/vohdu?POS=194.1820667,21.6826583&SIZE=0.4
     #    &instrument=decam&obs_type=object&proc_type=instcal
     #    &FORMAT=ALL&VERB=3&limit=9
+    # found = client.vohdu(pos, 0.3, instrument='decam',obs_type='object',proc_type='instcal', VERB=3, limit=None)
     def vohdu(self, pos, size,
               instrument=None,
               obs_type=None,
