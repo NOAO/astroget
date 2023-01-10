@@ -1,5 +1,7 @@
 """Client module for the Astro Data Archive.
 This module interfaces to the Astro Archive Server to get meta-data.
+
+see also: pip install wrap-astro-api
 """
 ############################################
 # Python Standard Library
@@ -8,6 +10,12 @@ from urllib.parse import urlencode, urlparse
 ############################################
 # External Packages
 import requests
+from astropy.io import fits
+from astropy.nddata import Cutout2D
+from astropy.utils.data import download_file
+from astropy.wcs import WCS
+from astropy.coordinates import SkyCoord
+from astropy import units as u
 ############################################
 # Local Packages
 from astroget.Results import Found
@@ -48,6 +56,35 @@ def get_obj_ra_dec(object_name):
     return {'name': object_name,
             'ra':obj_coord.ra.degree,
             'dec':obj_coord.dec.degree}
+
+# Display FITS in ubuntu with: fv, ds9
+def cutout(fitsfilename, hdu_idx, pos, size, outfile="cutout.fits"):
+    #size = 248 # pixels in a side
+    (ra, dec) = pos # of center
+
+    image_data,header = fits.getdata(fitsfilename, ext=hdu_idx, header=True)
+    wcs = WCS(header)
+
+    # Cutout rectangle from image_data
+    position = SkyCoord(ra=ra*u.deg, dec=dec*u.deg)
+    try:
+        print(f'image_data.shape={image_data.shape} '
+              f'position={position} '
+              f'size={size} '
+              f'wcs={wcs}')
+        cutout = Cutout2D(image_data, position, size, wcs=wcs)
+        print(f'image_data.shape={image_data.shape} cutout.shape={cutout.data.shape}')
+    except Exception as err:
+        print(err)
+        return None
+
+    # Save cutout with WCS into new image
+    newhdu = fits.PrimaryHDU(cutout.data)
+    # Update the FITS header with the cutout WCS
+    newhdu.header.update(cutout.wcs.to_header())
+    newhdu.writeto(outfile, overwrite=True)
+    print(f'Try: \n!ds9 {outfile}  # or use "fv"')
+    return outfile
 
 
 ###########################
@@ -392,6 +429,7 @@ def get_cutout_metadata(pos=(194.1820667, 21.6826583), size=0.3):
                          proc_type='instcal',
                          limit=None, VERB=3)
     return found
+
 
 
 if __name__ == "__main__":
