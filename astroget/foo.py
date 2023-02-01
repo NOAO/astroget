@@ -1,3 +1,10 @@
+hdu_corner_fields = ['CENRA1', 'CENDEC1',
+                     'COR1RA1','COR1DEC1',
+                     'COR2RA1','COR2DEC1',
+                     'COR3RA1','COR3DEC1',
+                     'COR4RA1','COR4DEC1' ]
+
+
 # This spec contains examples of all features. Can only be used on rectype=Hdu
 EXAMPLE1_outfields = [
             "md5sum",
@@ -55,18 +62,13 @@ found = client.find(outfields=['md5sum', 'archive_filename', 'url', 'filesize',
       "object"
     ],
     [
-        "proc_type",
+        "proc_type",o
       "instcal"
     ]
   ]
 }
 
-# object = (ra,dec) (radius=0.1)
-radius = 0.2
-#m31 = (10.6847083,41.26875)  # Andromeda Galaxy
-m64 = (194.1820667, 21.6826583)
-
-ra,dec = (194.1820667, 21.6826583) # m64
+# See: ~/sandbox/notes/noirlab/cutouts.org:*Retrieve data
 found = client.find(outfields=['url', 'filesize', "archive_filename",
                                'ra_center', 'dec_center',
                                'instrument', 'proc_type', 'obs_type'],
@@ -100,8 +102,9 @@ found = client.find(outfields=['url', 'filesize', "archive_filename",
 
 4.2mb c4d_180315_064354_ood_r_ls9.fits.fz a099661b099dc299aff828a753367ee8
 ...
-312mb c4d_170317_075741_oow_z_v1.fits.fz  b1dbbe234ae87da3b031ff621699643b
+312mb c4d_170317_075741_oow_z_v1.fits.fz  b1dbbe234ae87da3b031ff621699643b  <<<
 
 1.7gb c4d_180208_004814_ooi_z_ls9.fits.fz 1431f0096dd79c70ea1d5ac78282d508
 
 https://noirlab.edu/science/programs/ctio/instruments/Dark-Energy-Camera/characteristics
+<

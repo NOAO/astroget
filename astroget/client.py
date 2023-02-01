@@ -2,11 +2,15 @@
 This module interfaces to the Astro Archive Server to get meta-data.
 
 see also: pip install wrap-astro-api
+
+TODO:
+  add retrieve of WCS
 """
 ############################################
 # Python Standard Library
 from warnings import warn
 from urllib.parse import urlencode, urlparse
+from math import cos,sqrt,radians,isclose
 ############################################
 # External Packages
 import requests
@@ -21,6 +25,16 @@ from astropy import units as u
 from astroget.Results import Found
 import astroget.exceptions as ex
 from astroget import __version__
+import astroget.experimental as experimental
+
+'''Methods/functions still to add:
+- voimg
+- (SPARCL)
+
+ALSO:
+- lists: categoricals, fields(catalog),
+'''
+
 
 MAX_CONNECT_TIMEOUT = 3.1    # seconds
 MAX_READ_TIMEOUT = 90 * 60   # seconds
@@ -46,16 +60,34 @@ MAX_READ_TIMEOUT = 90 * 60   # seconds
 # http :8010/astroget/version
 
 _PROD  = 'https://astroarchive.noirlab.edu'         # noqa: E221
+_PAT   = 'https://marsnat1-pat.csdc.noirlab.edu'    # noqa: E221
 _DEV   = 'http://localhost:8010'                    # noqa: E221
 
 client_version = __version__
 
+hducornerkeys = ['CENRA1',   'CENDEC1',
+                 'COR1RA1', 'COR1DEC1',
+                 'COR2RA1', 'COR2DEC1',
+                 'COR3RA1', 'COR3DEC1',
+                 'COR4RA1', 'COR4DEC1']
+racornerkeys = ['CENRA1', 'COR1RA1','COR2RA1','COR3RA1', 'COR4RA1']
+
+def funcToMethod(func, clas):
+    setattr(clas, func.__name__, func)
+
+# The inverse of this is: Objects Near Position
+# see: https://ned.ipac.caltech.edu/forms/nearposn.html
 def get_obj_ra_dec(object_name):
     from astropy.coordinates import SkyCoord
     obj_coord = SkyCoord.from_name(object_name)
-    return {'name': object_name,
-            'ra':obj_coord.ra.degree,
-            'dec':obj_coord.dec.degree}
+    #! return {'name': object_name,
+    #!         'ra':obj_coord.ra.degree,
+    #!         'dec':obj_coord.dec.degree}
+    return (obj_coord.ra.degree, obj_coord.dec.degree)
+
+#! # RETURN: FITS image
+#! def cutout(imageid, ra, dec, pwidth, pheight):
+#!     pass
 
 # Display FITS in ubuntu with: fv, ds9
 # TODO: allow filename to be URI
@@ -130,8 +162,8 @@ class CsdcClient():
     def __init__(self, *,
                  url=_PROD,
                  verbose=False,
-                 connect_timeout=1.1,    # seconds
-                 read_timeout=90 * 60):  # seconds
+                 connect_timeout=3.05,    # seconds
+                 read_timeout=5 * 60):  # seconds
         """Create client instance.
         """
         self.rooturl = url.rstrip("/")
@@ -142,6 +174,7 @@ class CsdcClient():
                              float(connect_timeout))  # seconds
         self.r_timeout = min(MAX_READ_TIMEOUT,  # seconds
                              float(read_timeout))
+        self.headers = dict() # headers[hduidx] = header as json
 
         # require response within this num seconds
         # https://2.python-requests.org/en/master/user/advanced/#timeouts
@@ -176,6 +209,9 @@ class CsdcClient():
         #@@@  diff for each instrument,proctype !!!
         # aux+hdu
         self.fields = list()
+
+        funcToMethod(experimental.hdu_bounds, CsdcClient)
+        funcToMethod(experimental.fitscheck, CsdcClient)
 
         ###
         ####################################################
@@ -215,10 +251,6 @@ class CsdcClient():
                                     cache=True)
             self.apiversion = float(response.content)
         return self.apiversion
-
-    # RETURN: FITS image
-    def cutout(self, imageid, ra, dec, pwidth, pheight):
-        pass
 
     def find(self, outfields=None, *,
              constraints={},  # dict(fname) = [op, param, ...]
@@ -282,14 +314,13 @@ class CsdcClient():
         qstr = urlencode(uparams)
         url = f'{self.apiurl}/adv_search/find/?{qstr}'
         if verbose:
-            print(f'url={url}')
+            print(f'ads/find url={url}')
 
         search = [[k] + v for k, v in constraints.items()]
         sspec = dict(outfields=outfields, search=search)
         res = requests.post(url, json=sspec, timeout=self.timeout)
-
         if res.status_code != 200:
-            if self.verbose and ('traceback' in res.json()):
+            if verbose and ('traceback' in res.json()):
                 print(f'DBG: Server traceback=\n{res.json()["traceback"]}')
             raise ex.genAstrogetException(res, verbose=self.verbose)
 
@@ -299,7 +330,7 @@ class CsdcClient():
     # /api/sia/vohdu?POS=194.1820667,21.6826583&SIZE=0.4
     #    &instrument=decam&obs_type=object&proc_type=instcal
     #    &FORMAT=ALL&VERB=3&limit=9
-    # found = client.vohdu(pos, 0.3, instrument='decam',obs_type='object',proc_type='instcal', VERB=3, limit=None)
+    # found = client.vohdu((194.1820667, 21.6826583), 0.3, instrument='decam',obs_type='object',proc_type='instcal',VERB=3, limit=None)
     def vohdu(self, pos, size,
               instrument=None,
               obs_type=None,
@@ -331,108 +362,95 @@ class CsdcClient():
         res = requests.get(url, timeout=self.timeout)
 
         if res.status_code != 200:
-            if self.verbose:
+            if verbose:
                 print(f'DBG: Web-service error={res.content}')
             raise Exception(f'res={res} verbose={self.verbose}')
 
-        return Found(res.json(), client=self)
-        #!return res.json()
+        found = Found(res.json(), client=self)
+        for rec in found.records:
+            #!print(f'rec={rec}')
+            if 'url' in rec:
+                newq = f"hdus=0,{rec['hdu_idx'] + 1}" # Hack for bug NAT-701!!!
+                rec['url'] = urlparse(rec['url'])._replace(query=newq).geturl()
+                if verbose:
+                    print(f'Hack to get around bug NAT-701!!! Use {newq}')
+        return found
 
         # END vohdu()
 
-# This uses a hack to find HDUs that contain the given RA,DEC location.
-# The "radius" (2 dims) is 1/2 the estimated width/height of each HDU.
-# Since HDU sizes vary, this is silly (aka, wrong).
-#
-# Hack necessary because constraint on HDU ra,dec (each is a range)
-# currently broken in ADS.
-#
-# Best solution: Allow search_filters.val_in_range() to
-# use full list of django/postgres range operators.
-# see:
-# https://docs.djangoproject.com/en/4.0/ref/contrib/postgres/fields/#querying-range-fields
-# In particular: Hdu.objects.filter(ra__contains=NumericRange(t_ra_min, t_ra_max)
-#   t_ra_min:: Target RA Minimum. Left side of target region
-# A "target" is the (ramin:ramax,decmin:decmax) area of the sky that
-# reside completely in a HDU that will be source of cutout.
-# NOTE: A cutout will never cross HDU boundaries (so some useful data may
-#       me rejected.)
-def get_M64():
-    tra,tdec = (194.1820667, 21.6826583) # Target Center for RA, DEC search
-    rra,rdec = (0.45, 0.16) # Radius for RA, DEC search
+    def getimage(self, file_id, hdus=None, outfile=None, verbose=None):
+        """Download one FITS file from the Astro Data Archive.
+NEED DOCSTRING for 'client.py:getimage()' !!!"""
+        verbose = self.verbose if verbose is None else verbose
+        uparams = dict(limit=limit,
+                       format='json',
+                       )
+        qstr = urlencode(uparams)
+        url = f'{self.apiurl}/retrieve/{file_id}?{qstr}'
+        if verbose:
+            print(f'url={url}')
+        res = requests.get(url, timeout=self.timeout)
 
-    out = ['archive_filename',
-           'md5sum',  # cannot use "url" in HDU search (which this is)
-           'hdu:hdu_idx',
-           'hdu:ra_center', 'hdu:ra_min',  'hdu:ra_max',
-           'hdu:dec_center','hdu:dec_min', 'hdu:dec_max']
+        if res.status_code != 200:
+            if verbose:
+                print(f'DBG: Web-service error={res.content}')
+            raise Exception(f'res={res} verbose={verbose}')
 
-    # ads.find() bug does not allow ra_min, etc.
-    # They are synth fields from ra (range) etc.
-    #! cons = {'md5sum': ['b1dbbe234ae87da3b031ff621699643b'],
-    #!         'hdu:ra_min':  [-400, tra], # [inf:tra]
-    #!         'hdu:ra_max':  [tra, +400], # [tra:inf]
-    #!         'hdu:dec_min':  [-400, tdec], # [inf:tdec]
-    #!         'hdu:dec_max':  [tdec, +400], # [tdec:inf]
-    #!         }
-
-    cons = {'md5sum': ['b1dbbe234ae87da3b031ff621699643b'],
-            'hdu:ra_center':  [tra-rra, tra+rra],
-            'hdu:dec_center': [tdec-rdec, tdec+rdec]}
-
-    client = CsdcClient(verbose=True)
-    found = client.find(out, constraints=cons)
-    return found
+        if outfile is None:
+            hdustr = 'x' if hdus is None else '_'.join(hdus)
+            outfile = f'ADA_{md5}_{hudstr}.fits' # Astro Data Archive
+        with open(outfile, 'wb') as fd:
+            for chunk in res.iter_content(chunk_size=128):
+                fd.write(chunk)
+        return outfile
 
 
-def get_cutout_metadata(pos=(194.1820667, 21.6826583), size=0.3):
-    tra,tdec = pos # Target Center for RA, DEC search
-    rra,rdec = (size, size) # Radius for RA, DEC search
-    #rra,rdec = (0.1, 0.1) # Radius for RA, DEC search # makes it SLOW
+    # curl -X GET "http://localhost:8010/api/cutout/b61e72a2151eb69b73248e8e146ef596?hduidx=35&ra=194.1820667&dec=21.6826583&size=40" > ~/subimage.fits
+    # Get FITS containing subimage from one HDU
+    def cutout(self, ra, dec, size, md5, hduidx,
+               outfile=None, verbose=None):
+        verbose = self.verbose if verbose is None else verbose
+        # validate_params() @@@ !!!
+        #! uparams = dict(ra=ra, dec=dec, size=size, hduidx=hduidx)
+        # Following is hack/workaround for NAT-701
+        uparams = dict(ra=ra, dec=dec, size=size, hduidx=hduidx+1)
+        qstr = urlencode(uparams)
+        url = f'{self.apiurl}/cutout/{md5}?{qstr}'
+        if verbose:
+            print(f'cutout url={url}')
+        res = requests.get(url, timeout=self.timeout)
 
-    outfields=['md5sum', 'archive_filename',
-               # 'url', # cannot use "url" in HDU search (which this is)
-               'filesize',
-               'instrument', 'proc_type', 'obs_type',
-               'hdu:hdu_idx',
-               'hdu:ra_center', 'hdu:ra_min',  'hdu:ra_max',
-               'hdu:dec_center','hdu:dec_min', 'hdu:dec_max']
-    # This forces join, takes a long time. Killed after 10 minutes. Why so long?
-    cons = {'hdu:ra_center':  [tra-rra, tra+rra],
-            'hdu:dec_center': [tdec-rdec, tdec+rdec],
-            'instrument': ['decam'],
-            'obs_type': ['object'],
-            'proc_type': ['instcal'],
-            }
+        if res.status_code != 200:
+            if verbose:
+                print(f'DBG: client.cutout({(ra,dec,size,md5,hduidx)});'
+                      f'  Web-service error={res.json()}')
+            raise Exception(f'res={res} verbose={verbose}; {res.json()}')
+        #return res
+        if outfile is None:
+            outfile = f'subimage_{md5}_{int(ra)}_{int(dec)}.fits'
+        with open(outfile, 'wb') as fd:
+            for chunk in res.iter_content(chunk_size=128):
+                fd.write(chunk)
+        return outfile
 
-    # wall-time = 3min 30s  (%time)
-    # 04:05:45 PM MST 2023; ...4:10...4:16...4:37...4:49...5:08  CANCELLED
-    #!cons = {'hdu:ra_center':  [tra-rra, tra+rra],
-    #!        'hdu:dec_center': [tdec-rdec, tdec+rdec],
-    #!        }
-
-    #!client = CsdcClient(verbose=True)
-    #!found = client.find(outfields, constraints=cons)
-
-    #! recs = [(r['md5sum'],
-    #!          r['hdu:hdu_idx'],
-    #!          # r['archive_filename'],
-    #!          )
-    #!         for r in found.records
-    #!         if (r['instrument']=='decam'
-    #!             and r['obs_type']=='object'
-    #!             and r['proc_type']=='instcal')]
-    # recs; 49 unique md5sum, 228 records; avg 4.6 hdu/file!!
-
-    client = CsdcClient(verbose=True)
-    found = client.vohdu(pos, size,
-                         instrument='decam',
-                         obs_type='object',
-                         proc_type='instcal',
-                         limit=None, VERB=3)
-    return found
+    def fits_header(self, md5, verbose=None):
+        """Return FITS header as list of dictionaries.
+        (One dictionary per HDU.)"""
+        verbose = self.verbose if verbose is None else verbose
+        # validate_params() @@@ !!!
+        uparams = dict(format='json')
+        qstr = urlencode(uparams)
+        url = f'{self.apiurl}/header/{md5}?{qstr}'
+        if verbose:
+            print(f'api/header url={url}')
+        res = requests.get(url, timeout=self.timeout)
+        self.headers[md5] = res.json()
+        return res.json()
 
 
+###
+##############################################################################
+##############################################################################
 
 if __name__ == "__main__":
     import doctest

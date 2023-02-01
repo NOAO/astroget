@@ -41,16 +41,16 @@ class Results(UserList):
         return self.recs
 
     # just some columns (keys) of each records.
-    # flatten=True means do not output keys -- use tuple of values
+    # flat=True means do not output keys -- use tuple of values
     #   unless there is only one, then the record is just the naked singleton
-    def reccols(self, fields=None, flatten=False):
+    def reccols(self, fields=None, flat=False):
         """This an an unsupported, experimental feature.
         It may be removed without notice!"""
 
         if fields is None:
             return self.recs
         else:
-            if flatten:
+            if flat:
                 if len(fields) == 1:
                     return [r.get(fields[0]) for r in self.recs]
                 else:

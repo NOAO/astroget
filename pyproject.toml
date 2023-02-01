@@ -1,6 +1,13 @@
+# See: https://packaging.python.org/en/latest/tutorials/packaging-projects/
+#
+# Updating PyPi:
+#   source venv/bin/activate
+#   python3 -m pip install --upgrade build
+#
+#   python3 -m build; twine upload dist/*
 [project]
 name = "astroget"
-version = "0.0.1"
+version = "0.0.2b1.dev1"
 authors = [
   { name="S. Pothier", email="astroarchive@noirlab.edu" },
 ]
