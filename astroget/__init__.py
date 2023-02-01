@@ -1,3 +1,5 @@
+import importlib.metadata
+
 # List of packages to import when "from sparcl import *" is used
 __all__ = ["client"]
 
@@ -32,4 +34,13 @@ __all__ = ["client"]
 #__version__ = '1.1rc2'
 #__version__ = '1.1'
 
-__version__ = '0.1.0b1.dev1'
+#__version__ = '0.1.0b1.dev2'
+
+# see ../pyproject.toml
+
+# THIS ONLY sees the installed package (in site-packages)
+#   It will miss the current local copy
+#__version__ = importlib.metadata.version("astroget") # __package__ or __name__
+
+import toml
+__version__ = toml.load('pyproject.toml')['project']['version']
