@@ -6,6 +6,7 @@ see also: pip install wrap-astro-api
 TODO:
   add retrieve of WCS
 """
+# SEE also: ../notebooks/astroget-examples.ipynb
 # python -m unittest tests.tests_api
 #
 # Doctest example:
@@ -255,6 +256,8 @@ class CsdcClient():
             self.apiversion = float(response.content)
         return self.apiversion
 
+    # client.find(outfields=['md5sum','instrument','proc_type','AIRMASS'],
+    #             constraints=dict(instrument=['newfirm'],proc_type=['raw'])).records[0:10]
     def find(self, outfields=None, *,
              constraints={},  # dict(fname) = [op, param, ...]
              limit=500,

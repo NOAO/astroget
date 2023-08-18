@@ -9,3 +9,7 @@ wheel
 twine
 sphinx_mdinclude
 toml
+#
+pandas
+matplotlib
+ipympl
