@@ -6,6 +6,14 @@ see also: pip install wrap-astro-api
 TODO:
   add retrieve of WCS
 """
+# python -m unittest tests.tests_api
+#
+# Doctest example:
+#   cd ~/sandbox/astroget
+#   activate
+#   python astroget/client.py
+#   ## Returns NOTHING if everything works, else lists errors.
+
 ############################################
 # Python Standard Library
 from warnings import warn
@@ -14,12 +22,6 @@ from math import cos,sqrt,radians,isclose
 ############################################
 # External Packages
 import requests
-from astropy.io import fits
-from astropy.nddata import Cutout2D
-from astropy.utils.data import download_file
-from astropy.wcs import WCS
-from astropy.coordinates import SkyCoord
-from astropy import units as u
 ############################################
 # Local Packages
 from astroget.Results import Found
@@ -148,7 +150,7 @@ class CsdcClient():
     Example:
         >>> client = CsdcClient()
         >>> client
-        (astroget:0.1.0, api:6.0, https://astroarchive.noirlab.edu/api, verbose=False, connect_timeout=1.1, read_timeout=5400)
+        (astroget:0.0.3b1.dev1, api:6.0, https://astroarchive.noirlab.edu/api, verbose=False, connect_timeout=3.05, read_timeout=300.0)
 
     Raises:
         Exception: Object creation compares the version from the
@@ -162,6 +164,7 @@ class CsdcClient():
     def __init__(self, *,
                  url=_PROD,
                  verbose=False,
+                 show_curl=False,
                  connect_timeout=3.05,    # seconds
                  read_timeout=5 * 60):  # seconds
         """Create client instance.
@@ -296,7 +299,7 @@ class CsdcClient():
         >>> found = client.find(outfields=['instrument', 'proc_type', 'obs_type','url', 'filesize'], constraints={'instrument': ['decam'], 'obs_type': ['object'], 'proc_type': ['instcal'], 'filesize': [1e9,1e10]}, sort="md5sum")
         _validate_fields: NOT IMPLEMENTED
         >>> found.records[:2]
-        [{'obs_type': 'object', 'instrument': 'decam', 'filesize': 1776594240, 'proc_type': 'instcal', 'md5sum': '1431f0096dd79c70ea1d5ac78282d508', 'url': 'https://astroarchive.noirlab.edu/api/retrieve/1431f0096dd79c70ea1d5ac78282d508/'}, {'obs_type': 'object', 'instrument': 'decam', 'filesize': 2044751040, 'proc_type': 'instcal', 'md5sum': '52e3680b53768f12820ea1f873bd92db', 'url': 'https://astroarchive.noirlab.edu/api/retrieve/52e3680b53768f12820ea1f873bd92db/'}]
+        [{'filesize': 1776594240, 'instrument': 'decam', 'proc_type': 'instcal', 'obs_type': 'object', 'url': 'https://astroarchive.noirlab.edu/api/retrieve/1431f0096dd79c70ea1d5ac78282d508/'}, {'filesize': 2044751040, 'instrument': 'decam', 'proc_type': 'instcal', 'obs_type': 'object', 'url': 'https://astroarchive.noirlab.edu/api/retrieve/52e3680b53768f12820ea1f873bd92db/'}]
 
         """
         verbose = self.verbose if verbose is None else verbose
