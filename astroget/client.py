@@ -7,6 +7,11 @@ TODO:
   add retrieve of WCS
 """
 # SEE also: ../notebooks/astroget-examples.ipynb
+#
+# To test: (do after activating venv, in sandbox/astroget/)
+# ## Test againsts DEV server
+# serverurl=http://localhost:8060 python -m unittest tests.tests
+#
 # python -m unittest tests.tests_api
 #
 # Doctest example:
@@ -27,6 +32,7 @@ import requests
 # Local Packages
 from astroget.Results import Found
 import astroget.exceptions as ex
+import astroget.utils as ut
 from astroget import __version__
 import astroget.experimental as experimental
 
@@ -75,6 +81,7 @@ hducornerkeys = ['CENRA1',   'CENDEC1',
                  'COR4RA1', 'COR4DEC1']
 racornerkeys = ['CENRA1', 'COR1RA1','COR2RA1','COR3RA1', 'COR4RA1']
 
+# Monkey patch CLAS.func to use func
 def funcToMethod(func, clas):
     setattr(clas, func.__name__, func)
 
@@ -92,35 +99,6 @@ def get_obj_ra_dec(object_name):
 #! def cutout(imageid, ra, dec, pwidth, pheight):
 #!     pass
 
-# Display FITS in ubuntu with: fv, ds9
-# TODO: allow filename to be URI
-def cutout(fitsfilename, hdu_idx, pos, size, outfile="cutout.fits"):
-    #size = 248 # pixels in a side
-    (ra, dec) = pos # of center
-
-    image_data,header = fits.getdata(fitsfilename, ext=hdu_idx, header=True)
-    wcs = WCS(header)
-
-    # Cutout rectangle from image_data
-    position = SkyCoord(ra=ra*u.deg, dec=dec*u.deg)
-    try:
-        print(f'image_data.shape={image_data.shape} '
-              f'position={position} '
-              f'size={size} '
-              f'wcs={wcs}')
-        cutout = Cutout2D(image_data, position, size, wcs=wcs)
-        print(f'image_data.shape={image_data.shape} cutout.shape={cutout.data.shape}')
-    except Exception as err:
-        print(err)
-        return None
-
-    # Save cutout with WCS into new image
-    newhdu = fits.PrimaryHDU(cutout.data)
-    # Update the FITS header with the cutout WCS
-    newhdu.header.update(cutout.wcs.to_header())
-    newhdu.writeto(outfile, overwrite=True)
-    print(f'Try: \n!ds9 {outfile}  # or use "fv"')
-    return outfile
 
 
 ###########################
@@ -151,7 +129,7 @@ class CsdcClient():
     Example:
         >>> client = CsdcClient()
         >>> client
-        (astroget:0.0.3b1.dev1, api:6.0, https://astroarchive.noirlab.edu/api, verbose=False, connect_timeout=3.05, read_timeout=300.0)
+        (astroget:0.0.3b1.dev1, api:6.0, https://astroarchive.noirlab.edu/api, verbose=False, show_curl=False, connect_timeout=3.05, read_timeout=300.0)
 
     Raises:
         Exception: Object creation compares the version from the
@@ -174,6 +152,7 @@ class CsdcClient():
         self.apiurl = f'{self.rooturl}/api'
         self.apiversion = None
         self.verbose = verbose
+        self.show_curl = show_curl  # Show CURL equivalent of client method
         self.c_timeout = min(MAX_CONNECT_TIMEOUT,
                              float(connect_timeout))  # seconds
         self.r_timeout = min(MAX_READ_TIMEOUT,  # seconds
@@ -214,8 +193,12 @@ class CsdcClient():
         # aux+hdu
         self.fields = list()
 
+        # Monkey patch so we can keep experimental stuff elsewhere
+        # These methods can change without notice!
+        funcToMethod(experimental.cutout, CsdcClient)
         funcToMethod(experimental.hdu_bounds, CsdcClient)
         funcToMethod(experimental.fitscheck, CsdcClient)
+        funcToMethod(experimental.fits_header, CsdcClient)
 
         ###
         ####################################################
@@ -226,6 +209,7 @@ class CsdcClient():
                f' api:{self.apiversion},'
                f' {self.apiurl},'
                f' verbose={self.verbose},'
+               f' show_curl={self.show_curl},'
                f' connect_timeout={self.c_timeout},'
                f' read_timeout={self.r_timeout})')
 
@@ -410,48 +394,6 @@ NEED DOCSTRING for 'client.py:getimage()' !!!"""
                 fd.write(chunk)
         return outfile
 
-
-    # curl -X GET "http://localhost:8010/api/cutout/b61e72a2151eb69b73248e8e146ef596?hduidx=35&ra=194.1820667&dec=21.6826583&size=40" > ~/subimage.fits
-    # Get FITS containing subimage from one HDU
-    def cutout(self, ra, dec, size, md5, hduidx,
-               outfile=None, verbose=None):
-        verbose = self.verbose if verbose is None else verbose
-        # validate_params() @@@ !!!
-        #! uparams = dict(ra=ra, dec=dec, size=size, hduidx=hduidx)
-        # Following is hack/workaround for NAT-701
-        uparams = dict(ra=ra, dec=dec, size=size, hduidx=hduidx+1)
-        qstr = urlencode(uparams)
-        url = f'{self.apiurl}/cutout/{md5}?{qstr}'
-        if verbose:
-            print(f'cutout url={url}')
-        res = requests.get(url, timeout=self.timeout)
-
-        if res.status_code != 200:
-            if verbose:
-                print(f'DBG: client.cutout({(ra,dec,size,md5,hduidx)});'
-                      f'  Web-service error={res.json()}')
-            raise Exception(f'res={res} verbose={verbose}; {res.json()}')
-        #return res
-        if outfile is None:
-            outfile = f'subimage_{md5}_{int(ra)}_{int(dec)}.fits'
-        with open(outfile, 'wb') as fd:
-            for chunk in res.iter_content(chunk_size=128):
-                fd.write(chunk)
-        return outfile
-
-    def fits_header(self, md5, verbose=None):
-        """Return FITS header as list of dictionaries.
-        (One dictionary per HDU.)"""
-        verbose = self.verbose if verbose is None else verbose
-        # validate_params() @@@ !!!
-        uparams = dict(format='json')
-        qstr = urlencode(uparams)
-        url = f'{self.apiurl}/header/{md5}?{qstr}'
-        if verbose:
-            print(f'api/header url={url}')
-        res = requests.get(url, timeout=self.timeout)
-        self.headers[md5] = res.json()
-        return res.json()
 
 
 ###

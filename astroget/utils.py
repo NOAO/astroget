@@ -73,3 +73,17 @@ def EXAMPLE_tic_toc():
     elapsed = toc()
     print(f'Elapsed time between tic() and toc() = {elapsed:2.1f} seconds')
     return elapsed
+
+
+def curl_find_str(sspec, server, qstr=None):
+    qqstr = "" if qstr is None else f"?{qstr}"
+    url = f"{server}/sparc/find/{qqstr}"
+    curlpost1 = "curl -X 'POST' -H 'Content-Type: application/json' "
+    curlpost2 = f"-d '{json.dumps(sspec)}' '{url}'"
+    curlpost3 = " | python3 -m json.tool"
+    return curlpost1 + curlpost2 + curlpost3
+
+def curl_cutout_str(url):
+    curlpost1 = "curl -H 'Content-Type: application/json' "
+    curlpost2 = f"'{url}'"
+    return curlpost1 + curlpost2

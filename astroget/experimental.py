@@ -8,6 +8,45 @@ from urllib.parse import urlencode, urlparse
 ############################################
 # External Packages
 import requests
+############################################
+# Local Packages
+from astroget.Results import Found
+import astroget.utils as ut
+
+# Display FITS in ubuntu with: fv, ds9
+# TODO: allow filename to be URI
+def _cutout(fitsfilename, hdu_idx, pos, size, outfile="cutout.fits"):
+    #size = 248 # pixels in a side
+    (ra, dec) = pos # of center
+
+    image_data,header = fits.getdata(fitsfilename, ext=hdu_idx, header=True)
+    wcs = WCS(header)
+
+    # Cutout rectangle from image_data
+    position = SkyCoord(ra=ra*u.deg, dec=dec*u.deg)
+    try:
+        print(f'image_data.shape={image_data.shape} '
+              f'position={position} '
+              f'size={size} '
+              f'wcs={wcs}')
+        cutout = Cutout2D(image_data, position, size, wcs=wcs)
+        print(f'image_data.shape={image_data.shape}'
+              f' cutout.shape={cutout.data.shape}')
+    except Exception as err:
+        print(err)
+        return None
+
+    # Save cutout with WCS into new image
+    newhdu = fits.PrimaryHDU(cutout.data)
+    # Update the FITS header with the cutout WCS
+    newhdu.header.update(cutout.wcs.to_header())
+    newhdu.writeto(outfile, overwrite=True)
+    print(f'Try: \n!ds9 {outfile}  # or use "fv"')
+    return outfile
+
+# ############################################################################
+# ## Targets for Monkey Patch modifications to Client class
+#
 
 #client.hdu_bounds('013e55fa35798e0d46f02eeebb64b730',34) #prod
 def hdu_bounds(self, md5, hduidx, vet=0, verbose=True):
@@ -91,6 +130,59 @@ def fitscheck(self, file_id, verbose=False):
             print(f'DBG: Web-service error={res.json()}')
         raise Exception(f'res={res} verbose={verbose}')
     return res.json()
+
+# curl -X GET "http://localhost:8010/api/cutout/b61e72a2151eb69b73248e8e146ef596?hduidx=35&ra=194.1820667&dec=21.6826583&size=40" > ~/subimage.fits
+# Get FITS containing subimage from one HDU
+# RETURN: name of local FITS file
+def cutout(self, ra, dec, size, md5, hduidx,
+           outfile=None, verbose=None):
+    verbose = self.verbose if verbose is None else verbose
+    # validate_params() @@@ !!!
+    #! uparams = dict(ra=ra, dec=dec, size=size, hduidx=hduidx)
+    # Following is hack/workaround for NAT-701
+    uparams = dict(ra=ra, dec=dec, size=size, hduidx=hduidx+1)
+    qstr = urlencode(uparams)
+    url = f'{self.rooturl}/experimental/cutout/{md5}?{qstr}'
+    if verbose:
+        print(f'cutout url={url}')
+
+    if self.show_curl:
+        cmd = ut.curl_cutout_str(url)
+        print(cmd)
+
+
+    res = requests.get(url, timeout=self.timeout)
+
+    if res.status_code != 200:
+        if verbose:
+            print(f'DBG: client.cutout({(ra,dec,size,md5,hduidx)});'
+                  #f'  Web-service error={res.json()}'
+                  f'  Web-service error={res.text}'
+                  )
+        raise Exception(f'res={res} verbose={verbose}; {res.json()}')
+    #return res
+    if outfile is None:
+        outfile = f'subimage_{md5}_{int(ra)}_{int(dec)}.fits'
+    with open(outfile, 'wb') as fd:
+        for chunk in res.iter_content(chunk_size=128):
+            fd.write(chunk)
+    return outfile
+
+def fits_header(self, md5, verbose=None):
+    """Return FITS header as list of dictionaries.
+    (One dictionary per HDU.)"""
+    verbose = self.verbose if verbose is None else verbose
+    # validate_params() @@@ !!!
+    uparams = dict(format='json')
+    qstr = urlencode(uparams)
+    url = f'{self.apiurl}/header/{md5}?{qstr}'
+    if verbose:
+        print(f'api/header url={url}')
+    res = requests.get(url, timeout=self.timeout)
+    self.headers[md5] = res.json()
+    return res.json()
+
+
 
 ##############################################################################
 ##############################################################################
