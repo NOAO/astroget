@@ -196,6 +196,7 @@ class CsdcClient():
         # Monkey patch so we can keep experimental stuff elsewhere
         # These methods can change without notice!
         funcToMethod(experimental.cutout, CsdcClient)
+        funcToMethod(experimental.cutouts, CsdcClient)
         funcToMethod(experimental.hdu_bounds, CsdcClient)
         funcToMethod(experimental.fitscheck, CsdcClient)
         funcToMethod(experimental.fits_header, CsdcClient)
@@ -294,7 +295,8 @@ class CsdcClient():
         if outfields is None:
             outfields = ['md5sum'] # id
         if len(constraints) > 0:
-            self._validate_fields(constraints.keys())
+            pass
+            # self._validate_fields(constraints.keys()) # @@@ !!!
         used = set(outfields + list(constraints.keys()))
         rectype='hdu' if any([s.startswith('hdu:') for s in used]) else 'file'
 

@@ -168,6 +168,73 @@ def cutout(self, ra, dec, size, md5, hduidx,
             fd.write(chunk)
     return outfile
 
+
+#
+# vohdu
+#! ["hdu:ra_center", -400, 400]
+#! ok {"outfields": ["archive_filename","md5sum", "hdu:hdu_idx", "hdu:ra_center", "hdu:dec_center"], "search": [["archive_filename", "m54", "contains"]]}
+def cutouts(self, size, target_list, wait=True, verbose=None):
+    """Retrieve a batch of cutout images from the Astro Data Archive.
+
+    Args:
+        size (:obj:`int`): Width and Height of desired cutout images (in pixels)
+
+        target_list (:obj:`list`): List of 'targets'. Each 'target' consists
+            of a tuple containing: fileId, hduIdx, RA_center, DEC_center
+
+        wait (:obj:`bool`, optional): If set to True (the default),
+            wait for all subimages to produced, then return a URL
+            that can be used to return a tarfile contain all sub-images.
+            If set to True, return a JobId string that can be used to poll
+            and ultimately get the tarfile URL.
+            The tarfile will only be available for 24 hours from the time
+            it is generated.
+
+        verbose (:obj:`bool`, optional): Set to True for in-depth return
+            statement. Defaults to None. None means use value associated
+            with client (which defaults to False).
+
+        Returns:
+            :obj:`str`: URL of tarfile if wait=True, RUNID otherwise.
+
+        Example:
+            >>> client = CsdcClient()
+            >>> url = client.cutouts(50)
+
+    """
+    verbose = self.verbose if verbose is None else verbose
+
+    # Following is hack/workaround for NAT-701
+    targets = [(fid, hduidx+1, ra, dec) for  (fid, hduidx, ra, dec) in target_list]
+
+    # validate_params() @@@ !!!
+    uparams = dict(size=size)
+    qstr = urlencode(uparams)
+    url = f'{self.rooturl}/experimental/cutouts/?{qstr}'
+    if verbose:
+        print(f'cutouts url={url}')
+
+    if self.show_curl:
+        cmd = ut.curl_cutouts_str(url, targets)
+        print(cmd)
+
+    res = requests.post(url, json=targets, timeout=self.timeout)
+
+    if res.status_code != 200:
+        if verbose:
+            print(f'DBG: client.cutout({(ra,dec,size,md5,hduidx)});'
+                  #f'  Web-service error={res.json()}'
+                  f'  Web-service error={res.text}'
+                  )
+        raise Exception(f'res={res} verbose={verbose}; {res.json()}')
+    #return res
+    if outfile is None:
+        outfile = f'subimage_{md5}_{int(ra)}_{int(dec)}.fits'
+    with open(outfile, 'wb') as fd:
+        for chunk in res.iter_content(chunk_size=128):
+            fd.write(chunk)
+    return outfile
+
 def fits_header(self, md5, verbose=None):
     """Return FITS header as list of dictionaries.
     (One dictionary per HDU.)"""

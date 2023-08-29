@@ -3,6 +3,7 @@
 import datetime
 import time
 import socket
+import json
 # External packages
 #   none
 # LOCAL packages
@@ -86,4 +87,9 @@ def curl_find_str(sspec, server, qstr=None):
 def curl_cutout_str(url):
     curlpost1 = "curl -H 'Content-Type: application/json' "
     curlpost2 = f"'{url}'"
+    return curlpost1 + curlpost2
+
+def curl_cutouts_str(url, targets):
+    curlpost1 = "curl -H 'Content-Type: application/json' "
+    curlpost2 = f"-d '{json.dumps(targets)}' '{url}'"
     return curlpost1 + curlpost2
