@@ -9,10 +9,12 @@ TODO:
 # SEE also: ../notebooks/astroget-examples.ipynb
 #
 # To test: (do after activating venv, in sandbox/astroget/)
-# ## Test againsts DEV server
+#
+# #Test againsts DEV server
 # serverurl=http://localhost:8060 python -m unittest tests.tests
 #
-# python -m unittest tests.tests_api
+# # Default is test against PROD server
+# python -m unittest tests.tests
 #
 # Doctest example:
 #   cd ~/sandbox/astroget
@@ -285,7 +287,6 @@ class CsdcClient():
 
         # Get image ids of DECam Objects for possible cutouts from big files (> 1gb)
         >>> found = client.find(outfields=['instrument', 'proc_type', 'obs_type','url', 'filesize'], constraints={'instrument': ['decam'], 'obs_type': ['object'], 'proc_type': ['instcal'], 'filesize': [1e9,1e10]}, sort="md5sum")
-        _validate_fields: NOT IMPLEMENTED
         >>> found.records[:2]
         [{'filesize': 1776594240, 'instrument': 'decam', 'proc_type': 'instcal', 'obs_type': 'object', 'url': 'https://astroarchive.noirlab.edu/api/retrieve/1431f0096dd79c70ea1d5ac78282d508/'}, {'filesize': 2044751040, 'instrument': 'decam', 'proc_type': 'instcal', 'obs_type': 'object', 'url': 'https://astroarchive.noirlab.edu/api/retrieve/52e3680b53768f12820ea1f873bd92db/'}]
 

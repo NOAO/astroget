@@ -222,18 +222,13 @@ def cutouts(self, size, target_list, wait=True, verbose=None):
 
     if res.status_code != 200:
         if verbose:
-            print(f'DBG: client.cutout({(ra,dec,size,md5,hduidx)});'
+            print(f'DBG: client.cutouts({size}, {target_list})\n'
                   #f'  Web-service error={res.json()}'
                   f'  Web-service error={res.text}'
                   )
         raise Exception(f'res={res} verbose={verbose}; {res.json()}')
     #return res
-    if outfile is None:
-        outfile = f'subimage_{md5}_{int(ra)}_{int(dec)}.fits'
-    with open(outfile, 'wb') as fd:
-        for chunk in res.iter_content(chunk_size=128):
-            fd.write(chunk)
-    return outfile
+
 
 def fits_header(self, md5, verbose=None):
     """Return FITS header as list of dictionaries.
