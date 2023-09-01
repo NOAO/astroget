@@ -1,4 +1,6 @@
-# See: https://packaging.python.org/en/latest/tutorials/packaging-projects/
+# See:
+#   https://packaging.python.org/en/latest/tutorials/packaging-projects/
+#   https://pip.pypa.io/en/stable/reference/build-system/pyproject-toml/
 #
 # Updating PyPi:
 #   source venv/bin/activate
@@ -7,7 +9,10 @@
 #   python3 -m build; twine upload dist/*
 [project]
 name = "astroget"
-version = "0.0.3b2.dev1"  # see astroget/__init__.py
+
+#version = "0.0.3b2.dev1"  # see astroget/__init__.py
+version = "0.0.4a2.dev1"
+
 authors = [
   { name="S. Pothier", email="astroarchive@noirlab.edu" },
 ]
@@ -28,3 +33,4 @@ classifiers = [
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+# https://hatch.pypa.io/latest/config/build/
