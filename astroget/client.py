@@ -27,6 +27,7 @@ TODO:
 from warnings import warn
 from urllib.parse import urlencode, urlparse
 from math import cos,sqrt,radians,isclose
+import importlib
 ############################################
 # External Packages
 import requests
@@ -35,7 +36,6 @@ import requests
 from astroget.Results import Found
 import astroget.exceptions as ex
 import astroget.utils as ut
-from astroget import __version__
 import astroget.experimental as experimental
 
 '''Methods/functions still to add:
@@ -73,8 +73,6 @@ MAX_READ_TIMEOUT = 90 * 60   # seconds
 _PROD  = 'https://astroarchive.noirlab.edu'         # noqa: E221
 _PAT   = 'https://marsnat1-pat.csdc.noirlab.edu'    # noqa: E221
 _DEV   = 'http://localhost:8010'                    # noqa: E221
-
-client_version = __version__
 
 hducornerkeys = ['CENRA1',   'CENDEC1',
                  'COR1RA1', 'COR1DEC1',
@@ -190,7 +188,7 @@ class CsdcClient():
                    f'{self.apiversion} from the Astro Archive Server '
                    f'at {self.apiurl}.')
             raise Exception(msg)
-        self.clientversion = client_version
+        self.clientversion = importlib.metadata.version('astroget')
         #@@@  diff for each instrument,proctype !!!
         # aux+hdu
         self.fields = list()
@@ -249,6 +247,8 @@ class CsdcClient():
              constraints={},  # dict(fname) = [op, param, ...]
              limit=500,
              verbose=None,
+             count=False,
+             filerec=True,
              sort=None):
         """Find records in the Astro Archive database.
 
@@ -268,6 +268,14 @@ class CsdcClient():
 
             limit (:obj:`int`, optional): Maximum number of records to
                 return. Defaults to 500.
+
+            count (:obj:`bool`, optional): Iff True, only count the number of
+                matches. Do not return the matches.
+                This is faster than returning the results.
+                Defaults to False.
+
+            filerec (:obj:`bool`, optional): Iff True, find matching
+                File (Primary) records.  Else only find match HDU records.
 
             sort (:obj:`string`, optional): Comma separated list of fields
                 to sort by. Defaults to None. (no sorting)
@@ -302,15 +310,18 @@ class CsdcClient():
         rectype='hdu' if any([s.startswith('hdu:') for s in used]) else 'file'
 
         uparams = dict(limit=limit, rectype=rectype)
+        uparams['count'] = 'y' if count else 'n'
+        uparams['rectype'] = 'file' if filerec else 'hdu'
         if sort is not None:
             uparams['sort'] = sort
         qstr = urlencode(uparams)
         url = f'{self.apiurl}/adv_search/find/?{qstr}'
-        if verbose:
-            print(f'ads/find url={url}')
 
         search = [[k] + v for k, v in constraints.items()]
         sspec = dict(outfields=outfields, search=search)
+        if self.show_curl:
+            cmd = ut.curl_find_str(url, sspec)
+            print(cmd)
         res = requests.post(url, json=sspec, timeout=self.timeout)
         if res.status_code != 200:
             if verbose and ('traceback' in res.json()):

@@ -121,14 +121,6 @@ class ExperimentalTest(unittest.TestCase):
         # against the one expected by the Client. Raise error if
         # the Client is at least one major version behind.
 
-        print(
-            f"Running Client tests\n"
-            f'  against Server: "{urlparse(serverurl).netloc}"\n'
-            f"  comparing to: {exp.__name__}\n"
-            f"  showact={showact}\n"
-            f"  showcurl={showcurl}\n"
-        )
-
         cls.client = astroget.client.CsdcClient(
             url=serverurl,
             verbose=clverb,
@@ -140,6 +132,7 @@ class ExperimentalTest(unittest.TestCase):
         pass
 
     def test_cutout_0(self):
+        """Get single cutout."""
         ra,dec=(283.763875, -30.479861)
         md5,hduidx=('09a586a9d93a14a517f6d2e0e25f53da', 36)
         subimage = self.client.cutout(ra, dec, 400, md5, hduidx)
@@ -150,3 +143,28 @@ class ExperimentalTest(unittest.TestCase):
         with fits.open(subimage) as hdul:
             # Raise exception if invalid FITS
             hdul.verify()
+
+    def test_cutouts_0(self):
+        """Get batch of cutouts."""
+        #ra,dec=(283.763875, -30.479861)  # M54
+        #found = client.vohdu((ra,dec), search_size,
+        #                     instrument='decam',
+        #                     obs_type='object',
+        #                     proc_type='instcal',
+        #                     VERB=3,  limit=None, verbose=False)
+        #hdus = [[rec[k] for k in ['md5sum','hdu_idx']] for rec in found.records]
+        #targets = [[fid, hdu, ra, dec] for (fid,hdu) in hdus]
+        targets = [
+            ['a5fb3eef401a24461e4cd4c25e773d8f', 36, 283.763875, -30.479861],
+            ['a5fb3eef401a24461e4cd4c25e773d8f', 43, 283.763875, -30.479861],
+            ['b5cb08bbcf5c03e036b4f08f115e5773', 34, 283.763875, -30.479861],
+            ['bb72cb6b898159456030c268a2b04028', 34, 283.763875, -30.479861],
+            ['bc1db7e4587c3966a2a73b12c33236b8', 34, 283.763875, -30.479861],
+            ['c0b168c47b5dcc259a0da7788d213b9e', 12, 283.763875, -30.479861],
+            ['c0b168c47b5dcc259a0da7788d213b9e', 18, 283.763875, -30.479861],
+            ]
+        dl_url = self.client.cutouts(50, targets)
+        expected = 'subimage_09a586a9d93a14a517f6d2e0e25f53da_283_-30.fits'
+        #print(f'cutout return type={type(subimage)}, subimage={subimage}')
+        self.assertEqual(subimage, expected)
+        self.assertTrue(os.path.isfile(subimage))

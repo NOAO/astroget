@@ -205,7 +205,8 @@ def cutouts(self, size, target_list, wait=True, verbose=None):
     verbose = self.verbose if verbose is None else verbose
 
     # Following is hack/workaround for NAT-701
-    targets = [(fid, hduidx+1, ra, dec) for  (fid, hduidx, ra, dec) in target_list]
+    targets = [(fid, hduidx+1, ra, dec)
+               for  (fid, hduidx, ra, dec) in target_list]
 
     # validate_params() @@@ !!!
     uparams = dict(size=size)

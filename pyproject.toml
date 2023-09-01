@@ -9,9 +9,7 @@
 #   python3 -m build; twine upload dist/*
 [project]
 name = "astroget"
-
-#version = "0.0.3b2.dev1"  # see astroget/__init__.py
-version = "0.0.4a2.dev1"
+version = "0.0.4a2.dev3"
 
 authors = [
   { name="S. Pothier", email="astroarchive@noirlab.edu" },
