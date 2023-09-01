@@ -131,7 +131,7 @@ class CsdcClient():
     Example:
         >>> client = CsdcClient()
         >>> client
-        (astroget:0.0.3b1.dev1, api:6.0, https://astroarchive.noirlab.edu/api, verbose=False, show_curl=False, connect_timeout=3.05, read_timeout=300.0)
+        astroget_vers=0.0.4a2.dev1, api_vers=6.0, server_url=https://astroarchive.noirlab.edu/api, verbose=False, show_curl=False, connect_timeout=3.05, read_timeout=300.0
 
     Raises:
         Exception: Object creation compares the version from the
@@ -208,13 +208,13 @@ class CsdcClient():
         # END __init__()
 
     def __repr__(self):
-        return(f'(astroget:{self.clientversion},'
-               f' api:{self.apiversion},'
-               f' {self.apiurl},'
+        return(f'astroget_vers={self.clientversion},'
+               f' api_vers={self.apiversion},'
+               f' server_url={self.apiurl},'
                f' verbose={self.verbose},'
                f' show_curl={self.show_curl},'
                f' connect_timeout={self.c_timeout},'
-               f' read_timeout={self.r_timeout})')
+               f' read_timeout={self.r_timeout}')
 
     def _validate_fields(self, fields):
         """Raise exception if any field name in FIELDS is
@@ -269,7 +269,7 @@ class CsdcClient():
             limit (:obj:`int`, optional): Maximum number of records to
                 return. Defaults to 500.
 
-            sort (:obj:`list`, optional): Comma separated list of fields
+            sort (:obj:`string`, optional): Comma separated list of fields
                 to sort by. Defaults to None. (no sorting)
 
         Returns:

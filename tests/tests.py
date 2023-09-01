@@ -3,14 +3,19 @@
 # See also: ~/sandbox/sparclclient/tests/tests_api.py
 #
 # Unit tests for the NOIRLab Astro Data Archive client
+#
 # EXAMPLES: (do after activating venv, in sandbox/astroget/)
-#   python -m unittest tests.tests
+#  python -m unittest tests.tests      # against PROD
+#
+#  ### Run Against PAT Server.
+#  serverurl=https://marsnat1-pat.csdc.noirlab.edu python -m unittest tests.tests
 #
 #  ### Run Against DEV Server.
 #  serverurl=http://localhost:8060 python -m unittest tests.tests
 #  showact=1 serverurl=http://localhost:8050 python -m unittest tests.tests
 #
-# python -m unittest  -v tests.tests    # VERBOSE
+#  python -m unittest  -v tests.tests    # VERBOSE
+#
 ##############################################################################
 # Python library
 from contextlib import contextmanager
@@ -95,13 +100,14 @@ class ClientTest(unittest.TestCase):
 
     def test_find_0(self):
         """Find records matching metadata."""
-        found = self.client.find()
+        found = self.client.find(sort='md5sum')
         actual = found.records[:2]
 
         if showact:
             print(f"find_0: actual={actual}")
 
         self.assertEqual(actual, exp.find_0, msg="Actual to Expected")
+
 
 class ExperimentalTest(unittest.TestCase):
     """Test against EXPERIMENTAL features"""
@@ -132,17 +138,6 @@ class ExperimentalTest(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         pass
-
-    def test_find_0(self):
-        """Find records matching metadata."""
-        found = self.client.find()
-        actual = found.records[:2]
-
-        if showact:
-            print(f"find_0: actual={actual}")
-
-        self.assertEqual(actual, exp.find_0, msg="Actual to Expected")
-
 
     def test_cutout_0(self):
         ra,dec=(283.763875, -30.479861)
