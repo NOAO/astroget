@@ -27,6 +27,7 @@ from urllib.parse import urlparse
 import os
 import logging
 import sys
+import tarfile
 # External Packages
 import numpy
 from astropy.io import fits
@@ -46,7 +47,9 @@ DEV_SERVERS = [
 ]
 if serverurl in DEV_SERVERS:
     exp = exp_dev
+    DEV=True
 else:
+    DEV=False
     exp = exp_pat
 
 # Show ACTUAL results
@@ -154,17 +157,33 @@ class ExperimentalTest(unittest.TestCase):
         #                     VERB=3,  limit=None, verbose=False)
         #hdus = [[rec[k] for k in ['md5sum','hdu_idx']] for rec in found.records]
         #targets = [[fid, hdu, ra, dec] for (fid,hdu) in hdus]
-        targets = [
-            ['a5fb3eef401a24461e4cd4c25e773d8f', 36, 283.763875, -30.479861],
-            ['a5fb3eef401a24461e4cd4c25e773d8f', 43, 283.763875, -30.479861],
-            ['b5cb08bbcf5c03e036b4f08f115e5773', 34, 283.763875, -30.479861],
-            ['bb72cb6b898159456030c268a2b04028', 34, 283.763875, -30.479861],
-            ['bc1db7e4587c3966a2a73b12c33236b8', 34, 283.763875, -30.479861],
-            ['c0b168c47b5dcc259a0da7788d213b9e', 12, 283.763875, -30.479861],
-            ['c0b168c47b5dcc259a0da7788d213b9e', 18, 283.763875, -30.479861],
+        if DEV:
+            targets = [
+                ['09a586a9d93a14a517f6d2e0e25f53da', 36, 283.763875, -30.479861],
+                ['2836105d9c941692f185a7e9ee902eab', 34, 283.763875, -30.479861],
+                ['2d13e23d0cf2762890edaf9a179c3a1d', 36, 283.763875, -30.479861],
+                ['3c8421ce38bf2a9112e3fbbb18405c33', 34, 283.763875, -30.479861],
+                ['523c69cef368eaf24a66ac4010792490', 34, 283.763875, -30.479861],
             ]
-        dl_url = self.client.cutouts(50, targets)
-        expected = 'subimage_09a586a9d93a14a517f6d2e0e25f53da_283_-30.fits'
-        #print(f'cutout return type={type(subimage)}, subimage={subimage}')
-        self.assertEqual(subimage, expected)
-        self.assertTrue(os.path.isfile(subimage))
+        else:
+            targets = [
+                ['a5fb3eef401a24461e4cd4c25e773d8f', 36, 283.763875, -30.479861],
+                ['a5fb3eef401a24461e4cd4c25e773d8f', 43, 283.763875, -30.479861],
+                ['b5cb08bbcf5c03e036b4f08f115e5773', 34, 283.763875, -30.479861],
+                ['c0b168c47b5dcc259a0da7788d213b9e', 12, 283.763875, -30.479861],
+                ['c0b168c47b5dcc259a0da7788d213b9e', 18, 283.763875, -30.479861],
+            ]
+        dl_url = self.client.cutouts(50, targets, tarfile='test-cutouts.tar')
+        with tarfile.open('test-cutouts.tar') as tar:
+            actual = tar.getnames()
+
+        if showact:
+            print(f"cutouts_0: actual={actual}")
+
+        expected = ['MANIFEST.csv',
+                    'cutout_0.fits',
+                    'cutout_1.fits',
+                    'cutout_2.fits',
+                    'cutout_3.fits',
+                    'cutout_4.fits']
+        self.assertEqual(actual, expected)

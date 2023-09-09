@@ -3,6 +3,8 @@ This module interfaces to the Astro Archive Server to get meta-data.
 
 see also: pip install wrap-astro-api
 
+See NAT-701 but and patches in astroget to get around it.
+
 TODO:
   add retrieve of WCS
 """
@@ -129,7 +131,7 @@ class CsdcClient():
     Example:
         >>> client = CsdcClient()
         >>> client
-        astroget_vers=0.0.4a2.dev1, api_vers=6.0, server_url=https://astroarchive.noirlab.edu/api, verbose=False, show_curl=False, connect_timeout=3.05, read_timeout=300.0
+        astroget_vers=0.0.4a2.dev3, api_vers=6.0, server_url=https://astroarchive.noirlab.edu/api, verbose=False, show_curl=False, connect_timeout=3.05, read_timeout=300.0
 
     Raises:
         Exception: Object creation compares the version from the
@@ -296,7 +298,7 @@ class CsdcClient():
         # Get image ids of DECam Objects for possible cutouts from big files (> 1gb)
         >>> found = client.find(outfields=['instrument', 'proc_type', 'obs_type','url', 'filesize'], constraints={'instrument': ['decam'], 'obs_type': ['object'], 'proc_type': ['instcal'], 'filesize': [1e9,1e10]}, sort="md5sum")
         >>> found.records[:2]
-        [{'filesize': 1776594240, 'instrument': 'decam', 'proc_type': 'instcal', 'obs_type': 'object', 'url': 'https://astroarchive.noirlab.edu/api/retrieve/1431f0096dd79c70ea1d5ac78282d508/'}, {'filesize': 2044751040, 'instrument': 'decam', 'proc_type': 'instcal', 'obs_type': 'object', 'url': 'https://astroarchive.noirlab.edu/api/retrieve/52e3680b53768f12820ea1f873bd92db/'}]
+        [{'proc_type': 'instcal', 'instrument': 'decam', 'obs_type': 'object', 'filesize': 1776594240, 'url': 'https://astroarchive.noirlab.edu/api/retrieve/1431f0096dd79c70ea1d5ac78282d508/'}, {'proc_type': 'instcal', 'instrument': 'decam', 'obs_type': 'object', 'filesize': 2044751040, 'url': 'https://astroarchive.noirlab.edu/api/retrieve/52e3680b53768f12820ea1f873bd92db/'}]
 
         """
         verbose = self.verbose if verbose is None else verbose
@@ -379,16 +381,24 @@ class CsdcClient():
                 if verbose:
                     print(f'Hack to get around bug NAT-701!!! Use {newq}')
         return found
-
         # END vohdu()
 
+    # Retrieve
     def getimage(self, file_id, hdus=None, outfile=None, verbose=None):
         """Download one FITS file from the Astro Data Archive.
-NEED DOCSTRING for 'client.py:getimage()' !!!"""
+
+        Args:
+            file_id (str): The FileId (md5sum) of a FITS file in the Archive.
+
+            hdus (list): A list of HDU indices to include in the FITS file that is
+               retrieved.  If None (the default), include all HDUs.
+
+        NEED DOCSTRING for 'client.py:getimage()' !!!
+        """
         verbose = self.verbose if verbose is None else verbose
-        uparams = dict(limit=limit,
-                       format='json',
-                       )
+        uparams = dict()
+        if hdus:
+            uparams['hdus'] = ','.join([str(hdu) for hdu in hdus])
         qstr = urlencode(uparams)
         url = f'{self.apiurl}/retrieve/{file_id}?{qstr}'
         if verbose:
@@ -401,8 +411,8 @@ NEED DOCSTRING for 'client.py:getimage()' !!!"""
             raise Exception(f'res={res} verbose={verbose}')
 
         if outfile is None:
-            hdustr = 'x' if hdus is None else '_'.join(hdus)
-            outfile = f'ADA_{md5}_{hudstr}.fits' # Astro Data Archive
+            hdustr = 'x' if hdus is None else '_'.join([str(hdu) for hdu in hdus])
+            outfile = f'ADA_{file_id}_{hdustr}.fits' # Astro Data Archive
         with open(outfile, 'wb') as fd:
             for chunk in res.iter_content(chunk_size=128):
                 fd.write(chunk)

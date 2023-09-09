@@ -5,6 +5,7 @@ They may be removed without notice!
 ############################################
 # Python Standard Library
 from urllib.parse import urlencode, urlparse
+from pprint import pformat as pf
 ############################################
 # External Packages
 import requests
@@ -173,7 +174,8 @@ def cutout(self, ra, dec, size, md5, hduidx,
 # vohdu
 #! ["hdu:ra_center", -400, 400]
 #! ok {"outfields": ["archive_filename","md5sum", "hdu:hdu_idx", "hdu:ra_center", "hdu:dec_center"], "search": [["archive_filename", "m54", "contains"]]}
-def cutouts(self, size, target_list, wait=True, verbose=None):
+def cutouts(self, size, target_list, tarfile='cutouts.tar',
+            wait=True, verbose=None):
     """Retrieve a batch of cutout images from the Astro Data Archive.
 
     Args:
@@ -189,6 +191,11 @@ def cutouts(self, size, target_list, wait=True, verbose=None):
             and ultimately get the tarfile URL.
             The tarfile will only be available for 24 hours from the time
             it is generated.
+
+        tarfile (str): Create tarfile at this relative path location.
+            The tarfile will contain each cutout image as a FITS file and
+            MANIFEST.org file listed the files and where they came from.
+            Default: 'cutouts.tar'
 
         verbose (:obj:`bool`, optional): Set to True for in-depth return
             statement. Defaults to None. None means use value associated
@@ -209,7 +216,7 @@ def cutouts(self, size, target_list, wait=True, verbose=None):
                for  (fid, hduidx, ra, dec) in target_list]
 
     # validate_params() @@@ !!!
-    uparams = dict(size=size)
+    uparams = dict(size=size, wait=1 if wait else 0)
     qstr = urlencode(uparams)
     url = f'{self.rooturl}/experimental/cutouts/?{qstr}'
     if verbose:
@@ -221,14 +228,21 @@ def cutouts(self, size, target_list, wait=True, verbose=None):
 
     res = requests.post(url, json=targets, timeout=self.timeout)
 
+    print(f'cutouts.res.headers={res.headers}')
+
     if res.status_code != 200:
+        print(f'cutouts res[{len(res.content)}]={res.content}')
+        print(f'cutouts result.json={pf(res.json())}')
         if verbose:
             print(f'DBG: client.cutouts({size}, {target_list})\n'
                   #f'  Web-service error={res.json()}'
                   f'  Web-service error={res.text}'
                   )
         raise Exception(f'res={res} verbose={verbose}; {res.json()}')
-    #return res
+    with open(tarfile, 'wb') as fd:
+        for chunk in res.iter_content(chunk_size=128):
+            fd.write(chunk)
+    return tarfile
 
 
 def fits_header(self, md5, verbose=None):

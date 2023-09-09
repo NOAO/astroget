@@ -1,6 +1,7 @@
 # See:
 #   https://packaging.python.org/en/latest/tutorials/packaging-projects/
 #   https://pip.pypa.io/en/stable/reference/build-system/pyproject-toml/
+#   https://packaging.python.org/en/latest/specifications/declaring-project-metadata/
 #
 # Updating PyPi:
 #   source venv/bin/activate
@@ -8,20 +9,20 @@
 #
 #   python3 -m build; twine upload dist/*
 [project]
-name = "astroget"
-version = "0.0.4a2.dev3"
-
 authors = [
   { name="S. Pothier", email="astroarchive@noirlab.edu" },
 ]
-description = "Find and get FITS metadata and images."
-readme = "README.md"
-requires-python = ">=3.7"
 classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
 ]
+description = "Find and get FITS metadata and images."
+name = "astroget"
+readme = "README.md"
+requires-python = ">=3.7"
+version = "0.0.4a2.dev7"
+
 
 [project.urls]
 "Homepage" = "https://github.com/pypa/astroget"
