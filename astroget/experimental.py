@@ -137,6 +137,12 @@ def fitscheck(self, file_id, verbose=False):
 # RETURN: name of local FITS file
 def cutout(self, ra, dec, size, md5, hduidx,
            outfile=None, verbose=None):
+    """Generate and get a single cutout (FITS) from the Astro Data Archive.
+
+    This is a UNSUPPORTED, EXPERIMENTAL feature.
+    It may be removed without notice!
+    """
+
     verbose = self.verbose if verbose is None else verbose
     # validate_params() @@@ !!!
     #! uparams = dict(ra=ra, dec=dec, size=size, hduidx=hduidx)
@@ -175,8 +181,11 @@ def cutout(self, ra, dec, size, md5, hduidx,
 #! ["hdu:ra_center", -400, 400]
 #! ok {"outfields": ["archive_filename","md5sum", "hdu:hdu_idx", "hdu:ra_center", "hdu:dec_center"], "search": [["archive_filename", "m54", "contains"]]}
 def cutouts(self, size, target_list, tarfile='cutouts.tar',
-            wait=True, verbose=None):
+            public_only=True, background=False, verbose=None):
     """Retrieve a batch of cutout images from the Astro Data Archive.
+
+    This is a UNSUPPORTED, EXPERIMENTAL feature.
+    It may be removed without notice!
 
     Args:
         size (:obj:`int`): Width and Height of desired cutout images (in pixels)
@@ -184,11 +193,11 @@ def cutouts(self, size, target_list, tarfile='cutouts.tar',
         target_list (:obj:`list`): List of 'targets'. Each 'target' consists
             of a tuple containing: fileId, hduIdx, RA_center, DEC_center
 
-        wait (:obj:`bool`, optional): If set to True (the default),
-            wait for all subimages to produced, then return a URL
-            that can be used to return a tarfile contain all sub-images.
-            If set to True, return a JobId string that can be used to poll
-            and ultimately get the tarfile URL.
+        background (:obj:`bool`, optional): If False (the default),
+            wait for all subimages to produced, then return a tarfile
+            containing all sub-images.
+            If True, return a RunId (string) that can be used to poll
+            and retrieve the tarfile.
             The tarfile will only be available for 24 hours from the time
             it is generated.
 
@@ -197,18 +206,31 @@ def cutouts(self, size, target_list, tarfile='cutouts.tar',
             MANIFEST.org file listed the files and where they came from.
             Default: 'cutouts.tar'
 
+        public_only (:obj:`bool`, optional): If True (the default),
+            do not generate cutouts for any targets that reference
+            Proprietary images.
+            If False, generate all cutouts but only allow Authorized users
+            to retrieve the tarfile.  NOTE: unauthorized users will not be
+            to retrieve ANY generated cutouts (even the public ones) since
+            both proprietary and public cutouts are in the same tarfile.
+
         verbose (:obj:`bool`, optional): Set to True for in-depth return
             statement. Defaults to None. None means use value associated
             with client (which defaults to False).
 
         Returns:
-            :obj:`str`: URL of tarfile if wait=True, RUNID otherwise.
+            :obj:`str`: tarfile if background=False, RUNID otherwise.
 
         Example:
             >>> client = CsdcClient()
-            >>> url = client.cutouts(50)
+            >>> ra,dec = (283.763875, -30.479861)
+            >>> targets =  [['09a586a9d93a14a517f6d2e0e25f53da', 36, ra, dec], ['2836105d9c941692f185a7e9ee902eab', 34, ra, dec]]
+            >>> client.cutouts(50, targets, tarfile='example-cutouts.tar')
+            >>> tarfile.open('example-cutouts.tar').getnames()
+            ['MANIFEST.csv', 'cutout_0.fits', 'cutout_1.fits', 'cutout_2.fits', 'cutout_3.fits', 'cutout_4.fits']
 
     """
+    assert public_only, ('ERROR: Only public_only=True is allowed')
     verbose = self.verbose if verbose is None else verbose
 
     # Following is hack/workaround for NAT-701
@@ -216,7 +238,7 @@ def cutouts(self, size, target_list, tarfile='cutouts.tar',
                for  (fid, hduidx, ra, dec) in target_list]
 
     # validate_params() @@@ !!!
-    uparams = dict(size=size, wait=1 if wait else 0)
+    uparams = dict(size=size, background=1 if background else 0)
     qstr = urlencode(uparams)
     url = f'{self.rooturl}/experimental/cutouts/?{qstr}'
     if verbose:
@@ -228,7 +250,7 @@ def cutouts(self, size, target_list, tarfile='cutouts.tar',
 
     res = requests.post(url, json=targets, timeout=self.timeout)
 
-    print(f'cutouts.res.headers={res.headers}')
+    #!print(f'cutouts.res.headers={res.headers} reason={res.reason}')
 
     if res.status_code != 200:
         print(f'cutouts res[{len(res.content)}]={res.content}')
@@ -242,7 +264,7 @@ def cutouts(self, size, target_list, tarfile='cutouts.tar',
     with open(tarfile, 'wb') as fd:
         for chunk in res.iter_content(chunk_size=128):
             fd.write(chunk)
-    return tarfile
+    return res.reason
 
 
 def fits_header(self, md5, verbose=None):

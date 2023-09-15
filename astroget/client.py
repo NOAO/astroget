@@ -289,16 +289,11 @@ class CsdcClient():
 
         # Default find; no constraints, get md5sum field (image id)
         >>> client = CsdcClient()
-        >>> found = client.find()
-        >>> found
-        Find Results: 500 records
-        >>> found.records[:2]
-        [{'md5sum': '0000004ab27d9e427bb93c640b358633'}, {'md5sum': '0000032cfbe72cc162eaec4c0a9ce6ec'}]
 
         # Get image ids of DECam Objects for possible cutouts from big files (> 1gb)
-        >>> found = client.find(outfields=['instrument', 'proc_type', 'obs_type','url', 'filesize'], constraints={'instrument': ['decam'], 'obs_type': ['object'], 'proc_type': ['instcal'], 'filesize': [1e9,1e10]}, sort="md5sum")
+        >>> found = client.find(outfields=['instrument', 'proc_type', 'obs_type','url', 'filesize'], constraints={'instrument': ['decam'], 'obs_type': ['object'], 'proc_type': ['instcal'], 'filesize': [1e9,1e10]}, sort="md5sum", limit=2)
         >>> found.records[:2]
-        [{'proc_type': 'instcal', 'instrument': 'decam', 'obs_type': 'object', 'filesize': 1776594240, 'url': 'https://astroarchive.noirlab.edu/api/retrieve/1431f0096dd79c70ea1d5ac78282d508/'}, {'proc_type': 'instcal', 'instrument': 'decam', 'obs_type': 'object', 'filesize': 2044751040, 'url': 'https://astroarchive.noirlab.edu/api/retrieve/52e3680b53768f12820ea1f873bd92db/'}]
+        [{'instrument': 'decam', 'proc_type': 'instcal', 'filesize': 1776594240, 'obs_type': 'object', 'url': 'https://astroarchive.noirlab.edu/api/retrieve/1431f0096dd79c70ea1d5ac78282d508/'}, {'instrument': 'decam', 'proc_type': 'instcal', 'filesize': 2044751040, 'obs_type': 'object', 'url': 'https://astroarchive.noirlab.edu/api/retrieve/52e3680b53768f12820ea1f873bd92db/'}]
 
         """
         verbose = self.verbose if verbose is None else verbose
