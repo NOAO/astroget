@@ -210,7 +210,7 @@ class CsdcClient():
     def __repr__(self):
         return(f'astroget_vers={self.clientversion},'
                f' api_vers={self.apiversion},'
-               f' server_url={self.apiurl},'
+               f' url={self.rooturl},'
                f' verbose={self.verbose},'
                f' show_curl={self.show_curl},'
                f' connect_timeout={self.c_timeout},'

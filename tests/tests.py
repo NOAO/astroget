@@ -166,8 +166,9 @@ class ExperimentalTest(unittest.TestCase):
             # Raise exception if invalid FITS
             hdul.verify()
 
+    # Should check content of MANIFEST.csv when some cutouts fail.
     def test_cutouts_0(self):
-        """Get batch of cutouts. Not in background."""
+        """Get batch of cutouts. Not in background. ADD CHECKS"""
         tf='test-cutouts.tar'
         status = self.client.cutouts(50, self.targets, tarfile=tf)
         assert 'From RunId=' in status
@@ -184,7 +185,7 @@ class ExperimentalTest(unittest.TestCase):
                     'cutout_2.fits',
                     'cutout_3.fits',
                     'cutout_4.fits']
-        expected = ['MANIFEST.csv', 'cutout_0.fits', 'cutout_2.fits']
+        #expected = ['MANIFEST.csv', 'cutout_0.fits', 'cutout_2.fits']
         self.assertEqual(actual, expected)
 
     @skip('Not implemented.  Need full seperate thread?')
