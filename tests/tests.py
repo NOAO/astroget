@@ -188,7 +188,7 @@ class ExperimentalTest(unittest.TestCase):
         #expected = ['MANIFEST.csv', 'cutout_0.fits', 'cutout_2.fits']
         self.assertEqual(actual, expected)
 
-    @skip('Not implemented.  Need full seperate thread?')
+    # @skip('Not implemented.  Need full seperate thread?')
     def test_cutouts_1(self):
         """Get batch of cutouts with. In background (async with runid)"""
         status = self.client.cutouts(50, self.targets, background=True)
