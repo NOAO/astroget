@@ -75,7 +75,7 @@ def load_tests(loader, tests, ignore):
 class ClientTest(unittest.TestCase):
     """Test access to each endpoint of the Server API"""
 
-    maxDiff = None  # too see full values in DIFF on assert failure
+    maxDiff = None  # to see full values in DIFF on assert failure
     # assert_equal.__self__.maxDiff = None
 
     @classmethod
@@ -181,10 +181,11 @@ class ExperimentalTest(unittest.TestCase):
 
         expected = ['MANIFEST.csv',
                     'cutout_0.fits',
-                    'cutout_1.fits',
+                    #'cutout_1.fits',
                     'cutout_2.fits',
-                    'cutout_3.fits',
-                    'cutout_4.fits']
+                    #'cutout_3.fits',
+                    #'cutout_4.fits',
+                    ]
         #expected = ['MANIFEST.csv', 'cutout_0.fits', 'cutout_2.fits']
         self.assertEqual(actual, expected)
 

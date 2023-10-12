@@ -21,7 +21,7 @@ description = "Find and get FITS metadata and images."
 name = "astroget"
 readme = "README.md"
 requires-python = ">=3.7"
-version = "0.0.4a2.dev9"
+version = "0.0.4a3.dev1"
 
 
 [project.urls]
