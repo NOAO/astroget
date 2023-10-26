@@ -222,6 +222,19 @@ class CsdcClient():
         print('_validate_fields: NOT IMPLEMENTED')
 
     @property
+    def info(self):
+        return(
+            dict(
+                astroget_vers=self.clientversion,
+                api_vers=self.apiversion,
+                url=self.rooturl,
+                verbose=self.verbose,
+                show_curl=self.show_curl,
+                connect_timeout=self.c_timeout,
+                read_timeout=self.r_timeout,
+            ))
+
+    @property
     def expected_server_version(self):
         """Return version of Server Rest API used by this client.
         If the Rest API changes such that the Major version increases,

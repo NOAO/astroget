@@ -12,7 +12,7 @@
 #
 #  ### Run Against DEV Server.
 #  serverurl=http://localhost:8060 python -m unittest tests.tests
-#  showact=1 serverurl=http://localhost:8050 python -m unittest tests.tests
+#  showact=1 serverurl=http://localhost:8060 python -m unittest tests.tests
 #
 #  python -m unittest  -v tests.tests    # VERBOSE
 #
@@ -181,10 +181,10 @@ class ExperimentalTest(unittest.TestCase):
 
         expected = ['MANIFEST.csv',
                     'cutout_0.fits',
-                    #'cutout_1.fits',
+                    'cutout_1.fits',
                     'cutout_2.fits',
-                    #'cutout_3.fits',
-                    #'cutout_4.fits',
+                    'cutout_3.fits',
+                    'cutout_4.fits',
                     ]
         #expected = ['MANIFEST.csv', 'cutout_0.fits', 'cutout_2.fits']
         self.assertEqual(actual, expected)
