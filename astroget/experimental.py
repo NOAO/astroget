@@ -139,8 +139,43 @@ def cutout(self, ra, dec, size, md5, hduidx,
            outfile=None, verbose=None):
     """Generate and get a single cutout (FITS) from the Astro Data Archive.
 
-    This is a UNSUPPORTED, EXPERIMENTAL feature.
+    This is an UNSUPPORTED and EXPERIMENTAL feature.
     It may be removed without notice!
+
+    Args:
+        ra (:obj:`float`): right ascension (decimal degrees) of center of target
+    .
+        dec (:obj:`float`): declination (decimal degrees) of center of target.
+
+        size (:obj:`int`): Width and Height of desired cutout images (in pixels)
+
+        fid (:obj:`str`): File ID of FITS image in Astro Data Archive
+
+        hduidx (:obj:`int`): Index of HDU in FITS file of Astro Data Archive
+
+        outfile (str): Create subimage FITS file at this relative path location.
+
+        public_only (:obj:`bool`, optional): If True (the default),
+            do not generate cutouts for any targets that reference
+            Proprietary images.
+            If False, generate all cutouts but only allow Authorized users
+            to retrieve the tarfile.  NOTE: unauthorized users will not be
+            to retrieve ANY generated cutouts (even the public ones) since
+            both proprietary and public cutouts are in the same tarfile.
+
+        verbose (:obj:`bool`, optional): Set to True for in-depth return
+            statement. Defaults to None. None means use value associated
+            with client (which defaults to False).
+
+        Returns:
+            :obj:`str`: name of subimage
+
+        Example:
+            >>> client = CsdcClient()
+            >>> ra,dec = (283.763875, -30.479861)
+            >>> client.cutout(ra, dec, 50, 09a586a9d93a14a517f6d2e0e25f53da, 36)
+            subimage_09a586a9d93a14a517f6d2e0e25f53da_283_-30.fits
+
     """
 
     verbose = self.verbose if verbose is None else verbose
@@ -184,7 +219,7 @@ def cutouts(self, size, target_list, tarfile='cutouts.tar',
             public_only=True, background=False, verbose=None):
     """Retrieve a batch of cutout images from the Astro Data Archive.
 
-    This is a UNSUPPORTED, EXPERIMENTAL feature.
+    This is an UNSUPPORTED and EXPERIMENTAL feature.
     It may be removed without notice!
 
     Args:
