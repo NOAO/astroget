@@ -97,11 +97,6 @@ def get_obj_ra_dec(object_name):
     #!         'dec':obj_coord.dec.degree}
     return (obj_coord.ra.degree, obj_coord.dec.degree)
 
-#! # RETURN: FITS image
-#! def cutout(imageid, ra, dec, pwidth, pheight):
-#!     pass
-
-
 
 ###########################
 # ## The Client class
@@ -223,6 +218,7 @@ class CsdcClient():
 
     @property
     def info(self):
+        """Return various settings of the client."""
         return(
             dict(
                 astroget_vers=self.clientversion,
