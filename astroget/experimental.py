@@ -143,8 +143,8 @@ def cutout(self, ra, dec, size, md5, hduidx,
     It may be removed without notice!
 
     Args:
-        ra (:obj:`float`): right ascension (decimal degrees) of center of target
-    .
+        ra (:obj:`float`): right ascension (decimal degrees) of center of target.
+
         dec (:obj:`float`): declination (decimal degrees) of center of target.
 
         size (:obj:`int`): Width and Height of desired cutout images (in pixels)
