@@ -194,6 +194,8 @@ class CsdcClient():
         # These methods can change without notice!
         funcToMethod(experimental.cutout, CsdcClient)
         funcToMethod(experimental.cutouts, CsdcClient)
+        funcToMethod(experimental.bgcutouts, CsdcClient)
+        funcToMethod(experimental.cutouts_status, CsdcClient)
         funcToMethod(experimental.hdu_bounds, CsdcClient)
         funcToMethod(experimental.fitscheck, CsdcClient)
         funcToMethod(experimental.fits_header, CsdcClient)

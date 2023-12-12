@@ -228,14 +228,6 @@ def cutouts(self, size, target_list, tarfile='cutouts.tar',
         target_list (:obj:`list`): List of 'targets'. Each 'target' consists
             of a tuple containing: fileId, hduIdx, RA_center, DEC_center
 
-        background (:obj:`bool`, optional): If False (the default),
-            wait for all subimages to produced, then return a tarfile
-            containing all sub-images.
-            If True, return a RunId (string) that can be used to poll
-            and retrieve the tarfile.
-            The tarfile will only be available for 24 hours from the time
-            it is generated.
-
         tarfile (str): Create tarfile at this relative path location.
             The tarfile will contain each cutout image as a FITS file and
             MANIFEST.org file listed the files and where they came from.
@@ -265,6 +257,16 @@ def cutouts(self, size, target_list, tarfile='cutouts.tar',
             ['MANIFEST.csv', 'cutout_0.fits', 'cutout_1.fits', 'cutout_2.fits', 'cutout_3.fits', 'cutout_4.fits']
 
     """
+    #! OBSOLETE HELP:
+    #! background (:obj:`bool`, optional): If False (the default),
+    #!     wait for all subimages to produced, then return a tarfile
+    #!     containing all sub-images.
+    #!     If True, return a RunId (string) that can be used to poll
+    #!     and retrieve the tarfile.
+    #!     The tarfile will only be available for 24 hours from the time
+    #!     it is generated.
+
+
     assert public_only, ('ERROR: Only public_only=True is allowed')
     verbose = self.verbose if verbose is None else verbose
 
@@ -300,6 +302,101 @@ def cutouts(self, size, target_list, tarfile='cutouts.tar',
         for chunk in res.iter_content(chunk_size=128):
             fd.write(chunk)
     return res.reason
+
+
+def bgcutouts(self, size, target_list, tarfile='cutouts.tar',
+              public_only=True, verbose=None):
+    """Retrieve a batch of cutout images from the Astro Data Archive.
+
+    This is an UNSUPPORTED and EXPERIMENTAL feature.
+    It may be removed without notice!
+
+    Args:
+        size (:obj:`int`): Width and Height of desired cutout images (in pixels)
+
+        target_list (:obj:`list`): List of 'targets'. Each 'target' consists
+            of a tuple containing: fileId, hduIdx, RA_center, DEC_center
+
+        tarfile (str): Create tarfile at this relative path location.
+            The tarfile will contain each cutout image as a FITS file and
+            MANIFEST.org file listed the files and where they came from.
+            Default: 'cutouts.tar'
+
+        public_only (:obj:`bool`, optional): If True (the default),
+            do not generate cutouts for any targets that reference
+            Proprietary images.
+            If False, generate all cutouts but only allow Authorized users
+            to retrieve the tarfile.  NOTE: unauthorized users will not be
+            to retrieve ANY generated cutouts (even the public ones) since
+            both proprietary and public cutouts are in the same tarfile.
+
+        verbose (:obj:`bool`, optional): Set to True for in-depth return
+            statement. Defaults to None. None means use value associated
+            with client (which defaults to False).
+
+        Returns:
+            :obj:`str`: RUNID
+
+        Example:
+            >>> client = CsdcClient()
+            >>> ra,dec = (283.763875, -30.479861)
+            >>> targets =  [['09a586a9d93a14a517f6d2e0e25f53da', 36, ra, dec], ['2836105d9c941692f185a7e9ee902eab', 34, ra, dec]]
+            >>> client.bgcutouts(50, targets, tarfile='example-bgcutouts.tar')
+            >>> tarfile.open('example-bgcutouts.tar').getnames()
+            ['MANIFEST.csv', 'cutout_0.fits', 'cutout_1.fits', 'cutout_2.fits', 'cutout_3.fits', 'cutout_4.fits']
+
+    """
+    assert public_only, ('ERROR: Only public_only=True is allowed')
+    verbose = self.verbose if verbose is None else verbose
+
+    # Following is hack/workaround for NAT-701
+    targets = [(fid, hduidx+1, ra, dec)
+               for  (fid, hduidx, ra, dec) in target_list]
+
+    # validate_params() @@@ !!!
+    uparams = dict(size=size)
+    qstr = urlencode(uparams)
+    url = f'{self.rooturl}/experimental/bgcutouts/run?{qstr}'
+    if verbose:
+        print(f'bgcutouts url={url}')
+
+    if self.show_curl:
+        cmd = ut.curl_cutouts_str(url, targets)
+        print(cmd)
+
+    res = requests.post(url, json=targets, timeout=self.timeout)
+
+    print(f'cutouts.res.headers={res.headers} reason={res.reason}')
+
+    if res.status_code != 200:
+        print(f'bgcutouts res[{len(res.content)}]={res.content}')
+        print(f'bgcutouts result.json={pf(res.json())}')
+        if verbose:
+            print(f'DBG: client.bgcutouts({size}, {target_list})\n'
+                  #f'  Web-service error={res.json()}'
+                  f'  Web-service error={res.text}'
+                  )
+        raise Exception(f'res={res} verbose={verbose}; {res.json()}')
+
+    with open(tarfile, 'wb') as fd:
+        for chunk in res.iter_content(chunk_size=128):
+            fd.write(chunk)
+
+    info = res.json()
+    info['http_status'] = res.status_code
+    info['http_reason'] = res.reason
+    return info
+    # END: bgcutouts()
+
+def cutouts_status(self, runid):
+    url = f'{self.rooturl}/experimental/bgcutouts/status/{runid}'
+
+    if self.show_curl:
+        cmd = ut.curl_cutout_str(url)
+        print(cmd)
+
+    res = requests.get(url, timeout=self.timeout)
+    return res.content.decode()
 
 
 def fits_header(self, md5, verbose=None):
