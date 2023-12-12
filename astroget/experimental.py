@@ -304,7 +304,7 @@ def cutouts(self, size, target_list, tarfile='cutouts.tar',
     return res.reason
 
 
-def bgcutouts(self, size, target_list, tarfile='cutouts.tar',
+def bgcutouts(self, size, target_list, tarfile='cutouts.tar.gz',
               public_only=True, verbose=None):
     """Retrieve a batch of cutout images from the Astro Data Archive.
 
@@ -388,15 +388,27 @@ def bgcutouts(self, size, target_list, tarfile='cutouts.tar',
     return info
     # END: bgcutouts()
 
+# How is the batch run doing?
 def cutouts_status(self, runid):
     url = f'{self.rooturl}/experimental/bgcutouts/status/{runid}'
-
     if self.show_curl:
         cmd = ut.curl_cutout_str(url)
         print(cmd)
-
     res = requests.get(url, timeout=self.timeout)
     return res.content.decode()
+
+# Get the tarball of chips (and MANIFEST)
+def cutouts_get(self, runid, tarfile='cutouts.tar.gz'):
+    url = f'{self.rooturl}/experimental/bgcutouts/get/{runid}'
+    if self.show_curl:
+        cmd = ut.curl_cutout_str(url)
+        print(cmd)
+    res = requests.get(url, timeout=self.timeout)
+    with open(tarfile, 'wb') as fd:
+        for chunk in res.iter_content(chunk_size=128):
+            fd.write(chunk)
+    return res.reason
+
 
 
 def fits_header(self, md5, verbose=None):
