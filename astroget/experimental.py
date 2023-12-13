@@ -387,7 +387,7 @@ def bgcutouts(self, size, target_list, tarfile='cutouts.tar.gz',
     info['http_reason'] = res.reason
     return info
     # END: bgcutouts()
-
+    li
 # How is the batch run doing?
 def cutouts_status(self, runid):
     url = f'{self.rooturl}/experimental/bgcutouts/status/{runid}'
