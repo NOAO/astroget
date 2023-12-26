@@ -4,6 +4,7 @@ import datetime
 import time
 import socket
 import json
+import subprocess
 # External packages
 #   none
 # LOCAL packages
@@ -93,3 +94,15 @@ def curl_cutouts_str(url, targets):
     curlpost1 = "curl -H 'Content-Type: application/json' "
     curlpost2 = f"-d '{json.dumps(targets)}' '{url}'"
     return curlpost1 + curlpost2
+
+def githash(verbose=False):
+    try:
+        #  "/usr/bin/git"
+        ret = subprocess.run(["git", "rev-parse", "HEAD"],\
+                             capture_output=True)
+        commit_hash = ret.stdout.decode().strip()
+    except Exception as err:
+        if verbose:
+            print(err)
+        commit_hash = "<NA>"
+    return commit_hash

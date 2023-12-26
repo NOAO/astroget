@@ -3,7 +3,7 @@ __pycache__/
 *.py[cod]
 *$py.class
 *.fits
-*.tar
+*.tar.gz
 MANIFEST.csv
 
 # C extensions

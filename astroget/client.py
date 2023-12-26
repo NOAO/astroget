@@ -6,8 +6,7 @@ see also: pip install wrap-astro-api
 See NAT-701 but and patches in astroget to get around it.
 
 TODO:
-  add retrieve of WCS
-"""
+  add retrieve of WCS"""
 # SEE also: ../notebooks/astroget-examples.ipynb
 #
 # To test: (do after activating venv, in sandbox/astroget/)
@@ -199,7 +198,6 @@ class CsdcClient():
         funcToMethod(experimental.cutouts_get, CsdcClient)
         funcToMethod(experimental.hdu_bounds, CsdcClient)
         funcToMethod(experimental.fitscheck, CsdcClient)
-        funcToMethod(experimental.fits_header, CsdcClient)
 
         ###
         ####################################################
@@ -254,6 +252,20 @@ class CsdcClient():
                                     cache=True)
             self.apiversion = float(response.content)
         return self.apiversion
+
+    def fits_header(self, md5, verbose=None):
+        """Return FITS header as list of dictionaries.
+        (One dictionary per HDU.)"""
+        verbose = self.verbose if verbose is None else verbose
+        # validate_params() @@@ !!!
+        uparams = dict(format='json')
+        qstr = urlencode(uparams)
+        url = f'{self.apiurl}/header/{md5}?{qstr}'
+        if verbose:
+            print(f'api/header url={url}')
+        res = requests.get(url, timeout=self.timeout)
+        self.headers[md5] = res.json()
+        return res.json()
 
     # client.find(outfields=['md5sum','instrument','proc_type','AIRMASS'],
     #             constraints=dict(instrument=['newfirm'],proc_type=['raw'])).records[0:10]

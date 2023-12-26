@@ -121,7 +121,7 @@ def fitscheck(self, file_id, verbose=False):
     uparams = dict(format='json',
                    )
     qstr = urlencode(uparams)
-    url = f'{self.apiurl}/check/{file_id}?{qstr}'
+    url = f'{self.rooturl}/experimental/check/{file_id}?{qstr}'
     if verbose:
         print(f'url={url}')
     res = requests.get(url, timeout=self.timeout)
@@ -217,7 +217,7 @@ def cutout(self, ra, dec, size, md5, hduidx,
 #! ok {"outfields": ["archive_filename","md5sum", "hdu:hdu_idx", "hdu:ra_center", "hdu:dec_center"], "search": [["archive_filename", "m54", "contains"]]}
 def cutouts(self, size, target_list, tarfile='cutouts.tar',
             public_only=True, background=False, verbose=None):
-    """Retrieve a batch of cutout images from the Astro Data Archive.
+    """Retrieve a batch of cutout images from the Astro Data Archive.`
 
     This is an UNSUPPORTED and EXPERIMENTAL feature.
     It may be removed without notice!
@@ -411,19 +411,6 @@ def cutouts_get(self, runid, tarfile='cutouts.tar.gz'):
 
 
 
-def fits_header(self, md5, verbose=None):
-    """Return FITS header as list of dictionaries.
-    (One dictionary per HDU.)"""
-    verbose = self.verbose if verbose is None else verbose
-    # validate_params() @@@ !!!
-    uparams = dict(format='json')
-    qstr = urlencode(uparams)
-    url = f'{self.apiurl}/header/{md5}?{qstr}'
-    if verbose:
-        print(f'api/header url={url}')
-    res = requests.get(url, timeout=self.timeout)
-    self.headers[md5] = res.json()
-    return res.json()
 
 
 

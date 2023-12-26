@@ -28,6 +28,7 @@ import os
 import logging
 import sys
 import tarfile
+import time
 # External Packages
 import numpy
 from astropy.io import fits
@@ -167,9 +168,9 @@ class ExperimentalTest(unittest.TestCase):
             hdul.verify()
 
     # Should check content of MANIFEST.csv when some cutouts fail.
-    def test_cutouts_0(self):
+    def test_cutout_1(self):
         """Get batch of cutouts. Not in background. ADD CHECKS"""
-        tf='test-cutouts.tar'
+        tf='test-cutouts-1.tar.gz'
         status = self.client.cutouts(50, self.targets, tarfile=tf)
         assert 'From RunId=' in status
         #!print(f"cutouts_0: status={status}")
@@ -190,12 +191,24 @@ class ExperimentalTest(unittest.TestCase):
         self.assertEqual(actual, expected)
 
     # @skip('Not implemented.  Need full seperate thread?')
-    def test_cutouts_1(self):
-        """Get batch of cutouts with. In background (async with runid)"""
-        status = self.client.cutouts(50, self.targets, background=True)
+    def test_cutout_2(self):
+        """Get batch of cutouts in background (non-blocking). Use async and runid."""
+        tf='test-cutouts-2.tar.gz'
+        info = self.client.bgcutouts(50, self.targets)
+        self.assertIn('runid', info)
+        runid = info.get('runid')
 
-        actual = status
-        expected = 'foobar'
-        if showact:
-            print(f"cutouts_0: actual={actual}")
-        self.assertEqual(actual, expected)
+        time.sleep(3)  # give it time to complete
+        stat = self.client.cutouts_status(runid)
+        self.assertEqual(stat, 'Completed')
+
+        self.client.cutouts_get(runid, tarfile=tf)
+        with tarfile.open(tf, "r:gz") as tar:
+            names = tar.getnames()
+        expected = ['MANIFEST.csv',
+                    'cutout_0.fits',
+                    'cutout_1.fits',
+                    'cutout_2.fits',
+                    'cutout_3.fits',
+                    'cutout_4.fits']
+        self.assertEqual(names, expected)
