@@ -382,12 +382,13 @@ def bgcutouts(self, size, target_list, tarfile='cutouts.tar.gz',
         for chunk in res.iter_content(chunk_size=128):
             fd.write(chunk)
 
-    info = res.json()
-    info['http_status'] = res.status_code
-    info['http_reason'] = res.reason
-    return info
-    # END: bgcutouts()
-    li
+    #! info = res.json()
+    #! info['http_status'] = res.status_code
+    #! info['http_reason'] = res.reason
+    #! return info
+    return res.content.decode()
+    # END: bgcutouts(
+
 # How is the batch run doing?
 def cutouts_status(self, runid):
     url = f'{self.rooturl}/experimental/bgcutouts/status/{runid}'

@@ -173,12 +173,12 @@ class ExperimentalTest(unittest.TestCase):
         tf='test-cutouts-1.tar.gz'
         status = self.client.cutouts(50, self.targets, tarfile=tf)
         assert 'From RunId=' in status
-        #!print(f"cutouts_0: status={status}")
+        #!print(f"cutouts_1: status={status}")
         with tarfile.open(tf) as tar:
             actual = tar.getnames()
 
         if showact:
-            print(f"cutouts_0: actual={actual}")
+            print(f"cutouts_1: actual={actual}")
 
         expected = ['MANIFEST.csv',
                     'cutout_0.fits',
@@ -190,17 +190,16 @@ class ExperimentalTest(unittest.TestCase):
         #expected = ['MANIFEST.csv', 'cutout_0.fits', 'cutout_2.fits']
         self.assertEqual(actual, expected)
 
-    # @skip('Not implemented.  Need full seperate thread?')
     def test_cutout_2(self):
         """Get batch of cutouts in background (non-blocking). Use async and runid."""
         tf='test-cutouts-2.tar.gz'
-        info = self.client.bgcutouts(50, self.targets)
-        self.assertIn('runid', info)
-        runid = info.get('runid')
+        runid = self.client.bgcutouts(50, self.targets)
+        #self.assertIn('runid', info)
+        #runid = info.get('runid')
 
         time.sleep(3)  # give it time to complete
         stat = self.client.cutouts_status(runid)
-        self.assertEqual(stat, 'Completed')
+        self.assertEqual(stat, 'COMPLETED')
 
         self.client.cutouts_get(runid, tarfile=tf)
         with tarfile.open(tf, "r:gz") as tar:
@@ -211,4 +210,7 @@ class ExperimentalTest(unittest.TestCase):
                     'cutout_2.fits',
                     'cutout_3.fits',
                     'cutout_4.fits']
+        if showact:
+            print(f"cutouts_2: names={names}")
+
         self.assertEqual(names, expected)
