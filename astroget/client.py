@@ -144,6 +144,7 @@ class CsdcClient():
                  read_timeout=5 * 60):  # seconds
         """Create client instance.
         """
+        self.session = requests.Session()
         self.rooturl = url.rstrip("/")
         self.apiurl = f'{self.rooturl}/api'
         self.apiversion = None
@@ -194,7 +195,10 @@ class CsdcClient():
         funcToMethod(experimental.cutout, CsdcClient)
         funcToMethod(experimental.cutouts, CsdcClient)
         funcToMethod(experimental.bgcutouts, CsdcClient)
+        funcToMethod(experimental.cutouts_threads, CsdcClient)
         funcToMethod(experimental.cutouts_status, CsdcClient)
+        funcToMethod(experimental.cutouts_predict, CsdcClient)
+        funcToMethod(experimental.cutouts_wait, CsdcClient)
         funcToMethod(experimental.cutouts_get, CsdcClient)
         funcToMethod(experimental.hdu_bounds, CsdcClient)
         funcToMethod(experimental.fitscheck, CsdcClient)
@@ -267,8 +271,10 @@ class CsdcClient():
         self.headers[md5] = res.json()
         return res.json()
 
-    # client.find(outfields=['md5sum','instrument','proc_type','AIRMASS'],
-    #             constraints=dict(instrument=['newfirm'],proc_type=['raw'])).records[0:10]
+    # client.find(
+    #     outfields=["md5sum", "hdu:hdu_idx", "hdu:ra_center", "hdu:dec_center"],
+    #     constraints={"hdu:ra_center":[-900, +900],"hdu:dec_center":[-900, +900]},
+    #     filerec=False)
     def find(self, outfields=None, *,
              constraints={},  # dict(fname) = [op, param, ...]
              limit=500,

@@ -6,6 +6,7 @@ They may be removed without notice!
 # Python Standard Library
 from urllib.parse import urlencode, urlparse
 from pprint import pformat as pf
+import time
 ############################################
 # External Packages
 import requests
@@ -13,6 +14,7 @@ import requests
 # Local Packages
 from astroget.Results import Found
 import astroget.utils as ut
+import astroget.exceptions as ex
 
 # Display FITS in ubuntu with: fv, ds9
 # TODO: allow filename to be URI
@@ -217,7 +219,8 @@ def cutout(self, ra, dec, size, md5, hduidx,
 #! ok {"outfields": ["archive_filename","md5sum", "hdu:hdu_idx", "hdu:ra_center", "hdu:dec_center"], "search": [["archive_filename", "m54", "contains"]]}
 def cutouts(self, size, target_list, tarfile='cutouts.tar',
             public_only=True, background=False, verbose=None):
-    """Retrieve a batch of cutout images from the Astro Data Archive.`
+    """Retrieve a batch of cutout images from the Astro Data Archive.
+    (Blocking)
 
     This is an UNSUPPORTED and EXPERIMENTAL feature.
     It may be removed without notice!
@@ -297,7 +300,9 @@ def cutouts(self, size, target_list, tarfile='cutouts.tar',
                   #f'  Web-service error={res.json()}'
                   f'  Web-service error={res.text}'
                   )
-        raise Exception(f'res={res} verbose={verbose}; {res.json()}')
+        #raise Exception(f'res={res} verbose={verbose}; {res.json()}')
+        raise ex.genAstrogetException(res)
+
     with open(tarfile, 'wb') as fd:
         for chunk in res.iter_content(chunk_size=128):
             fd.write(chunk)
@@ -365,8 +370,8 @@ def bgcutouts(self, size, target_list, tarfile='cutouts.tar.gz',
         print(cmd)
 
     res = requests.post(url, json=targets, timeout=self.timeout)
-
-    print(f'cutouts.res.headers={res.headers} reason={res.reason}')
+    runid = res.content.decode()
+    #! print(f'cutouts.res.headers={res.headers} reason={res.reason}')
 
     if res.status_code != 200:
         print(f'bgcutouts res[{len(res.content)}]={res.content}')
@@ -378,19 +383,23 @@ def bgcutouts(self, size, target_list, tarfile='cutouts.tar.gz',
                   )
         raise Exception(f'res={res} verbose={verbose}; {res.json()}')
 
-    with open(tarfile, 'wb') as fd:
-        for chunk in res.iter_content(chunk_size=128):
-            fd.write(chunk)
+    self.runid = runid
+    return runid
+    # END: bgcutouts()
 
-    #! info = res.json()
-    #! info['http_status'] = res.status_code
-    #! info['http_reason'] = res.reason
-    #! return info
-    return res.content.decode()
-    # END: bgcutouts(
+def cutouts_threads(self, runid=None):
+    url = f'{self.rooturl}/experimental/bgcutouts/threads'
+    if self.show_curl:
+        cmd = ut.curl_cutout_str(url)
+        print(cmd)
+    res = requests.get(url, timeout=self.timeout)
+    return res.json()
 
 # How is the batch run doing?
-def cutouts_status(self, runid):
+def cutouts_status(self, runid=None):
+    """Return COMPLETED or PROCESSING status of job."""
+    if runid is None:
+        runid = self.runid
     url = f'{self.rooturl}/experimental/bgcutouts/status/{runid}'
     if self.show_curl:
         cmd = ut.curl_cutout_str(url)
@@ -398,17 +407,71 @@ def cutouts_status(self, runid):
     res = requests.get(url, timeout=self.timeout)
     return res.content.decode()
 
+def cutouts_predict(self, runid, verbose=None):
+    verbose = self.verbose if verbose is None else verbose
+    if runid is None:
+        runid = self.runid
+    url = f'{self.rooturl}/experimental/bgcutouts/predict/{runid}'
+    if self.show_curl:
+        cmd = ut.curl_cutout_str(url)
+        print(cmd)
+    # est :: dict( # seconds, bytes
+    #          started, now, done_time,
+    #          num_tasks_total, num_tasks_done, file_size_done,
+    #          est_total_time,      # seconds
+    #          est_remain_time,     # seconds
+    #          est_total_file_size, # bytes
+    #          est_finish,          # Clock (<date>T<time>)
+    #          )
+    est = requests.get(url, timeout=self.timeout).json()
+    if verbose:
+        print(f'DBG: est={est}')
+
+    remtime = est.get('est_remain_time',0)
+    tfsize  = est.get('est_total_file_size',0)
+    return dict(remain_minutes=int(1+remtime/60), # minutes
+                tarfile_mb=int(1+tfsize/1e6),     # MB
+                est=est)
+
+def cutouts_wait(self, runid, verbose=False):
+    """Wait (block) until job is done."""
+    verbose = self.verbose if verbose is None else verbose
+    if runid is None:
+        runid = self.runid
+
+    if verbose:
+        print(f'Active threads: {self.cutouts_threads(runid)}')
+    time.sleep(3) # give Predict a litte time for data to be gathered
+    pred = self.cutouts_predict(runid, verbose=verbose)
+
+    while  self.cutouts_status(runid) == 'PROCESSING':
+        pred = self.cutouts_predict(runid, verbose=verbose)
+        remain_minutes = pred['remain_minutes']
+        delay = remain_minutes * 60
+        print(f'\nCompleted {pred["est"]["num_tasks_done"]}'
+              f' of {pred["est"]["num_tasks_total"]} tasks.'
+              f' Time spent {round(pred["est"]["done_time"])}'
+              f' of {round(pred["est"]["est_total_time"])} seconds')
+        print(f'Active threads: {self.cutouts_threads(runid)}')
+        print(f'Wait for {int(delay/60)} minutes for job to finish.')
+        time.sleep(delay)
+    print(f'Status: {self.cutouts_status(runid)}')
+
+
 # Get the tarball of chips (and MANIFEST)
 def cutouts_get(self, runid, tarfile='cutouts.tar.gz'):
+    if runid is None:
+        runid = self.runid
     url = f'{self.rooturl}/experimental/bgcutouts/get/{runid}'
     if self.show_curl:
         cmd = ut.curl_cutout_str(url)
         print(cmd)
     res = requests.get(url, timeout=self.timeout)
+    res.raise_for_status()
     with open(tarfile, 'wb') as fd:
         for chunk in res.iter_content(chunk_size=128):
             fd.write(chunk)
-    return res.reason
+    return res.reason, tarfile
 
 
 

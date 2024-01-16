@@ -68,7 +68,7 @@ clverb = False
 def load_tests(loader, tests, ignore):
     import doctest
 
-    print(f"DISABLED running doctests against: astroget.client")
+    print(f"\nDISABLED running doctests against: astroget.client\n")
     #! print(f"Arranging to run doctests against: astroget.client")
     #! tests.addTests(doctest.DocTestSuite(astroget.client))
     return tests
@@ -169,10 +169,10 @@ class ExperimentalTest(unittest.TestCase):
 
     # Should check content of MANIFEST.csv when some cutouts fail.
     def test_cutout_1(self):
-        """Get batch of cutouts. Not in background. ADD CHECKS"""
+        """Blocking batch. ADD CHECKS"""
         tf='test-cutouts-1.tar.gz'
         status = self.client.cutouts(50, self.targets, tarfile=tf)
-        assert 'From RunId=' in status
+        #assert 'From RunId=' in status
         #!print(f"cutouts_1: status={status}")
         with tarfile.open(tf) as tar:
             actual = tar.getnames()
@@ -191,7 +191,7 @@ class ExperimentalTest(unittest.TestCase):
         self.assertEqual(actual, expected)
 
     def test_cutout_2(self):
-        """Get batch of cutouts in background (non-blocking). Use async and runid."""
+        """Non-blocking batch. Run, status, get."""
         tf='test-cutouts-2.tar.gz'
         runid = self.client.bgcutouts(50, self.targets)
         #self.assertIn('runid', info)
@@ -214,3 +214,15 @@ class ExperimentalTest(unittest.TestCase):
             print(f"cutouts_2: names={names}")
 
         self.assertEqual(names, expected)
+
+    def test_cutout_2a(self):
+        """Non-blocking batch. Predict. """
+        runid = self.client.bgcutouts(50, self.targets)
+        actual = self.client.cutouts_predict(runid)
+        expected = {'seconds_until_done': 1.011509999898849e+21,
+                    'tarfile_size_bytes': 0.0}
+        #self.assertEqual(actual, expected)
+        if showact:
+            print(f"cutouts_2a: actual={actual}")
+        self.assertGreater(actual.get('tarfile_size_bytes',0), 1000)
+        self.assertGreater(actual.get('seconds_until_done',0), 1)

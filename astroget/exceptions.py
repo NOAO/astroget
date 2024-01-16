@@ -13,22 +13,17 @@ def genAstrogetException(response, verbose=False):
     # As of Python 3.10.0.alpha6, python "match" statement could be used
     # instead of if-elif-else.
     # https://docs.python.org/3.10/whatsnew/3.10.html#pep-634-structural-pattern-matching
-    if status.get('errorCode') == 'BADPATH':
-        return BadPath(status.get('errorMessage'))
-    elif status.get('errorCode') == 'BADQUERY':
-        return BadQuery(status.get('errorMessage'))
-    elif status.get('errorCode') == 'UNKFIELD':
-        return UnknownField(status.get('errorMessage'))
-    elif status.get('errorCode') == 'BADCONST':
-        return BadSearchConstraint(status.get('errorMessage'))
-    else:
-        return UnknownServerError(
-            f"{status.get('errorMessage')} "
-            f"[{status.get('errorCode')}]")
+    match status.get('errorCode'):
+        case 'JOBACTIV':
+            return JobActive(status.get('errorMessage'))
+        case _:
+            return UnknownServerError(
+                f"{status.get('errorMessage')} "
+                f"[{status.get('errorCode')}]")
 
 
 class BaseClientException(Exception):
-    """Base Class for all SPARCL exceptions. """
+    """Base Class for all Astroget exceptions. """
     error_code = 'UNKNOWN'
     error_message = '<NA>'
     traceback = None
@@ -47,7 +42,7 @@ class BaseClientException(Exception):
         return f'[{self.error_code}] {self.error_message}'
 
     def to_dict(self):
-        """Convert a SPARCL exception to a python dictionary"""
+        """Convert a Astroget exception to a python dictionary"""
         dd = dict(errorMessage=self.error_message,
                   errorCode=self.error_code)
         if self.traceback is not None:
@@ -55,59 +50,26 @@ class BaseClientException(Exception):
         return dd
 
 
-class BadPath(BaseClientException):
-    """A field path starts with a non-core field."""
-    error_code = 'BADPATH'
 
 
-class BadQuery(BaseClientException):
-    """Bad find constraints."""
-    error_code = 'BADPATH'
+class JobActive(BaseClientException):
+    """The job has not completed yet.  Cannot get results."""
+    error_code = 'JOBACTIV'
 
-
-class BadInclude(BaseClientException):
-    """Include list contains invalid data field(s)."""
-    error_code = 'BADINCL'
+class CannotPredict(BaseClientException):
+    """The Server has not done enough work to make a reasonable prediction."""
+    error_code = 'NOPRED'
 
 
 class UnknownServerError(BaseClientException):
-    """Client got a status response from the SPARC Server that we do not
+    """Client got a status response from the Astro Archive Server that we do not
     know how to decode."""
     error_code = 'UNKNOWN'
 
-
-class UnkDr(BaseClientException):
-    """The Data Release is not known or not supported."""
-    error_code = 'UNKDR'
-
-
-class ReadTimeout(BaseClientException):
-    """The server did not send any data in the allotted amount of time."""
-    error_code = 'RTIMEOUT'
-
-
-class UnknownSparcl(BaseClientException):
-    """Unknown SPARCL error.  If this is ever raised (seen in a log)
+class UnknownAstroget(BaseClientException):
+    """Unknown Astroget error.  If this is ever raised (seen in a log)
     create and use a new BaseSparcException exception that is more specific."""
-    error_code = 'UNKSPARC'
-
-
-class UnknownField(BaseClientException):
-    """Unknown field name for a record"""
-    error_code = 'UNKFIELD'
-
-
-class NoCommonIdField(BaseClientException):
-    """The field name for Science id field is not common to all Data Sets"""
-    error_code = 'IDNOTCOM'
-
-
-class ServerConnectionError(BaseClientException):
-    error_code = 'SRVCONER'
-
-
-class BadSearchConstraint(BaseClientException):
-    error_code = 'BADSCONS'
+    error_code = 'UNKAGET'
 
 
 # error_code values should be no bigger than 8 characters 12345678
