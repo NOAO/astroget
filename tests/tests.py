@@ -197,7 +197,7 @@ class ExperimentalTest(unittest.TestCase):
         #self.assertIn('runid', info)
         #runid = info.get('runid')
 
-        time.sleep(3)  # give it time to complete
+        time.sleep(4)  # give it time to complete
         stat = self.client.cutouts_status(runid)
         self.assertEqual(stat, 'COMPLETED')
 
@@ -219,10 +219,9 @@ class ExperimentalTest(unittest.TestCase):
         """Non-blocking batch. Predict. """
         runid = self.client.bgcutouts(50, self.targets)
         actual = self.client.cutouts_predict(runid)
-        expected = {'seconds_until_done': 1.011509999898849e+21,
-                    'tarfile_size_bytes': 0.0}
+        expected = {'remain_minutes': 123377500, 'tarfile_mb': 12350001}
         #self.assertEqual(actual, expected)
         if showact:
-            print(f"cutouts_2a: actual={actual}")
-        self.assertGreater(actual.get('tarfile_size_bytes',0), 1000)
-        self.assertGreater(actual.get('seconds_until_done',0), 1)
+            print(f"cutout_2a: actual={actual}")
+        self.assertGreater(actual.get('tarfile_mb',0), 1)
+        self.assertGreater(actual.get('remain_minutes',0), 1)

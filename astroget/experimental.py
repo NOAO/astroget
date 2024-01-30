@@ -7,6 +7,8 @@ They may be removed without notice!
 from urllib.parse import urlencode, urlparse
 from pprint import pformat as pf
 import time
+import datetime
+from datetime import timedelta
 ############################################
 # External Packages
 import requests
@@ -433,29 +435,52 @@ def cutouts_predict(self, runid, verbose=None):
                 tarfile_mb=int(1+tfsize/1e6),     # MB
                 est=est)
 
-def cutouts_wait(self, runid, verbose=False):
-    """Wait (block) until job is done."""
+def cutouts_wait(self, runid, verbose=False, max_minutes=3):
+    """Wait (block) until job is done to a maximum of max_minutes."""
     verbose = self.verbose if verbose is None else verbose
     if runid is None:
         runid = self.runid
+    start = datetime.datetime.utcnow()
+    latest = start + timedelta(minutes=max_minutes)
+    print(f'Waiting until: {latest.strftime("%m/%d/%Y %H:%M")} UTC (or done)')
+    total_wait = 0
 
     if verbose:
-        print(f'Active threads: {self.cutouts_threads(runid)}')
-    time.sleep(3) # give Predict a litte time for data to be gathered
+        print(f'Active threads ({str(start)}): {self.cutouts_threads(runid)}')
+    time.sleep(3) # give Predict a little time for data to be gathered
     pred = self.cutouts_predict(runid, verbose=verbose)
+    if verbose:
+        print(f'Inititial prediction: {pred}')
 
     while  self.cutouts_status(runid) == 'PROCESSING':
+        if  datetime.datetime.utcnow() > latest:
+            msg = (f'\nWaiting aborted after max_minutes={max_minutes}'
+                   f' without job completing.'
+                   f' The job (runid={runid}) is still running.'
+                   f' To allow a longer wait, use the the "max_minutes" keyword.'
+                   )
+            print(msg)
+            break
         pred = self.cutouts_predict(runid, verbose=verbose)
         remain_minutes = pred['remain_minutes']
         delay = remain_minutes * 60
-        print(f'\nCompleted {pred["est"]["num_tasks_done"]}'
+        print(f'Wait for {int(delay/60)} minutes.'
+              f' Already waited {total_wait/60} minutes.'
+              f' Completed {pred["est"]["num_tasks_done"]}'
               f' of {pred["est"]["num_tasks_total"]} tasks.'
-              f' Time spent {round(pred["est"]["done_time"])}'
-              f' of {round(pred["est"]["est_total_time"])} seconds')
-        print(f'Active threads: {self.cutouts_threads(runid)}')
-        print(f'Wait for {int(delay/60)} minutes for job to finish.')
+              #f' Abort wait at {latest.strftime("%m/%d/%Y %H:%M")}'
+              )
+        if verbose:
+            print(f' Time spent {round(pred["est"]["done_time"])}'
+                  f' of {round(pred["est"]["est_total_time"])} seconds')
+            print(f'Active threads: {self.cutouts_threads(runid)}')
         time.sleep(delay)
-    print(f'Status: {self.cutouts_status(runid)}')
+        total_wait += delay
+        threads = self.cutouts_threads(runid)
+        #!if len(threads) <= 3:
+        #!    print(f'No workers are running. Giving up on waiting. {threads}')
+        #!    break
+    print(f'Status: {self.cutouts_status(runid)}; Total wait: {total_wait}')
 
 
 # Get the tarball of chips (and MANIFEST)
